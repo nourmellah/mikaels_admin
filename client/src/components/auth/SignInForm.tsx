@@ -71,7 +71,7 @@ export default function SignInForm({ api, onSuccess }: SignInFormProps) {
           <div>
             
             <form onSubmit={handleSubmit}>
-              {submitError && <p className="text-red-600 text-center">{submitError}</p>}
+              {submitError ? <p className="text-red-600 text-center">{submitError}</p> : <br/>}
               <div className="space-y-6">
                 <div>
                   <Label>

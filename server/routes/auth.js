@@ -34,7 +34,7 @@ router.post('/login', async (req, res) => {
 // REFRESH
 router.post('/refresh', async (req, res) => {
   const token = req.cookies.refreshToken;
-  if (!token) return res.sendStatus(401);
+  if (!token) return res.sendStatous(401);
   let payload;
   try { payload = verifyRefreshToken(token); }
   catch { return res.sendStatus(403); }
