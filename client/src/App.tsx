@@ -19,6 +19,8 @@ import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import ProtectedRoute from "./ProtectedRoute";
+import AddStudentPage from "./pages/Students/AddStudents";
+import StudentsList from "./pages/Students/StudentsList";
 
 export default function App() {
   return (
@@ -30,6 +32,12 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route index path="/" element={<Home />} />
+
+              {/* Students Pages */}
+              <Route path="/students">
+                <Route index element={<StudentsList />} />
+                <Route path="add" element={<AddStudentPage />} />
+              </Route>
 
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />

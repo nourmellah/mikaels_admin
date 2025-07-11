@@ -14,11 +14,12 @@ var app = express();
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
-}));app.use(express.json());     // parse JSON bodies
+}));
+app.use(express.json());     // parse JSON bodies
 
 app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -26,5 +27,10 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/hello', require('./routes/hello'));
 app.use('/auth', require('./routes/auth'));
+
+/*app.use('/uploads', express.static(path.join(__dirname, 'uploads')));*/
+app.use('/groups', require('./routes/groups'));
+app.use('/students', require('./routes/students'));
+
 
 module.exports = app;
