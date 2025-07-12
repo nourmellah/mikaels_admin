@@ -122,7 +122,7 @@ export default function AddStudentPage() {
               </div>
               <div className="md:col-span-2">
                 <Label>Photo de profil</Label>
-                <FileInput onChange={setImageFile} />
+                <FileInput onChange={e => setImageFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
               </div>
             </div>
           </ComponentCard>

@@ -21,6 +21,7 @@ import Home from "./pages/Dashboard/Home";
 import ProtectedRoute from "./ProtectedRoute";
 import AddStudentPage from "./pages/Students/AddStudents";
 import StudentsList from "./pages/Students/StudentsList";
+import AddGroupPage from "./pages/Groups/AddGroups";
 
 export default function App() {
   return (
@@ -38,6 +39,13 @@ export default function App() {
                 <Route index element={<StudentsList />} />
                 <Route path="add" element={<AddStudentPage />} />
               </Route>
+
+              {/* Groups Pages */}
+              <Route path="/groups">
+                <Route index element={<StudentsList />} />
+                <Route path="add" element={<AddGroupPage />} />
+              </Route>
+
 
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
