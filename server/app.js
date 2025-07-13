@@ -31,6 +31,6 @@ app.use('/auth', require('./routes/auth'));
 /*app.use('/uploads', express.static(path.join(__dirname, 'uploads')));*/
 app.use('/groups', require('./routes/groups'));
 app.use('/students', require('./routes/students'));
-
+app.use('/teachers', require('./routes/teachers'));
 
 module.exports = app;

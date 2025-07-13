@@ -22,6 +22,11 @@ import ProtectedRoute from "./ProtectedRoute";
 import AddStudentPage from "./pages/Students/AddStudents";
 import StudentsList from "./pages/Students/StudentsList";
 import AddGroupPage from "./pages/Groups/AddGroups";
+import AddTeacherPage from "./pages/Teachers/AddTeachers";
+import TeachersList from "./pages/Teachers/TeachersList";
+import GroupsList from "./pages/Groups/GroupsList";
+import EditStudentPage from "./pages/Students/EditStudents";
+import EditTeacherPage from "./pages/Teachers/EditTeachers";
 
 export default function App() {
   return (
@@ -38,12 +43,20 @@ export default function App() {
               <Route path="/students">
                 <Route index element={<StudentsList />} />
                 <Route path="add" element={<AddStudentPage />} />
+                <Route path="/students/:id/edit" element={<EditStudentPage />} />
               </Route>
 
               {/* Groups Pages */}
               <Route path="/groups">
-                <Route index element={<StudentsList />} />
+                <Route index element={<GroupsList />} />
                 <Route path="add" element={<AddGroupPage />} />
+              </Route>
+
+              {/* Teachers Pages */}
+              <Route path="/teachers">
+                <Route index element={<TeachersList />} />
+                <Route path="add" element={<AddTeacherPage />} />
+                <Route path="/teachers/:id/edit" element={<EditTeacherPage />} />
               </Route>
 
 

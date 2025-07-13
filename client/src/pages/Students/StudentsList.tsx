@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/Students/StudentsList.tsx
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import PageMeta from '../../components/common/PageMeta';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import ComponentCard from '../../components/common/ComponentCard';
@@ -75,26 +76,24 @@ export default function StudentsList() {
                   {students.map(student => (
                     <TableRow key={student.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.05]">
                       <TableCell className="px-5 py-3 text-gray-900 dark:text-white text-start text-sm">
-                        {student.firstName} {student.lastName}
+                        <Link to={`/students/${student.id}/edit`} className="text-blue-600 hover:underline">
+                          {student.firstName} {student.lastName}
+                        </Link>
                       </TableCell>
                       <TableCell className="px-5 py-3 text-gray-900 dark:text-white text-start text-sm">
                         {student.email}
                       </TableCell>
                       <TableCell className="px-5 py-3 text-gray-900 dark:text-white text-start text-sm">
-                        {student.phone || '-'}
+                        {student.phone}
                       </TableCell>
                       <TableCell className="px-5 py-3 text-gray-900 dark:text-white text-start text-sm">
-                        {student.groupId != null ? groupsMap[student.groupId] || 'Sans groupe' : 'Sans groupe'}
+                        {student.groupId != null ? groupsMap[student.groupId] : '–'}
                       </TableCell>
                       <TableCell className="px-5 py-3 text-gray-900 dark:text-white text-start text-sm">
-                        {student.level || '-'}
+                        {student.level || '–'}
                       </TableCell>
                       <TableCell className="px-5 py-3 text-gray-900 dark:text-white text-start text-sm">
-                        {student.hasCv ? (
-                          <Badge color="success">Oui</Badge>
-                        ) : (
-                          <Badge color="error">Non</Badge>
-                        )}
+                        {student.hasCv ? <Badge>Oui</Badge> : <Badge color="error">Non</Badge>}
                       </TableCell>
                     </TableRow>
                   ))}
