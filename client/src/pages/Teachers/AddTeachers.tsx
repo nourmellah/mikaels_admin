@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +17,7 @@ export default function AddTeacherPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('99 999 999');
   const [salary, setSalary] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
 
@@ -101,7 +102,7 @@ export default function AddTeacherPage() {
                 </div>
                 <div className="md:col-span-2">
                   <Label>Photo de profil</Label>
-                  <FileInput onChange={e => setImageFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
+                  <FileInput onChange={e => setImageUrl(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
                 </div>
               </div>
             </ComponentCard>
