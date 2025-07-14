@@ -9,16 +9,19 @@ async function getGroupById(id) {
   const { rows } = await pool.query('SELECT * FROM groups WHERE id = $1', [id]);
   return rows[0] ? GroupDTO.fromRow(rows[0]) : null;
 }
+
 async function createGroup(data) {
-  const { name, level, startDate, endDate, weeklyHours, price, teacherId, imageUrl } = data;
+  const { name, level, startDate, endDate, weeklyHours, totalHours, price, teacherId, imageUrl } = data;
   const { rows } = await pool.query(
     `INSERT INTO groups
-      (name, level, start_date, end_date, weekly_hours, price, teacher_id, image_url)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [name, level, startDate, endDate, weeklyHours, price, teacherId, imageUrl]
+       (name, level, start_date, end_date, weekly_hours, total_hours, price, teacher_id, image_url)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING *`,
+    [name, level, startDate, endDate, weeklyHours, totalHours, price, teacherId, imageUrl]
   );
   return GroupDTO.fromRow(rows[0]);
 }
+
 async function updateGroup(id, data) {
   const fields = [];
   const values = [];
@@ -36,6 +39,7 @@ async function updateGroup(id, data) {
   );
   return rows[0] ? GroupDTO.fromRow(rows[0]) : null;
 }
+
 async function deleteGroup(id) {
   await pool.query('DELETE FROM groups WHERE id = $1', [id]);
 }
@@ -45,6 +49,8 @@ function mapToColumn(field) {
     startDate: 'start_date',
     endDate: 'end_date',
     weeklyHours: 'weekly_hours',
+    totalHours: 'total_hours',
+    price: 'price',
     teacherId: 'teacher_id',
     imageUrl: 'image_url',
     createdAt: 'created_at',

@@ -25,8 +25,9 @@ import AddGroupPage from "./pages/Groups/AddGroups";
 import AddTeacherPage from "./pages/Teachers/AddTeachers";
 import TeachersList from "./pages/Teachers/TeachersList";
 import GroupsList from "./pages/Groups/GroupsList";
-import EditStudentPage from "./pages/Students/EditStudents";
-import EditTeacherPage from "./pages/Teachers/EditTeachers";
+import StudentProfile from "./pages/Students/StudentProfile";
+import TeacherProfile from "./pages/Teachers/TeacherProfile";
+import GroupProfile from "./pages/Groups/GroupProfile";
 
 export default function App() {
   return (
@@ -43,20 +44,21 @@ export default function App() {
               <Route path="/students">
                 <Route index element={<StudentsList />} />
                 <Route path="add" element={<AddStudentPage />} />
-                <Route path="/students/:id/edit" element={<EditStudentPage />} />
+                <Route path="/students/:id/" element={<StudentProfile />} />
               </Route>
 
               {/* Groups Pages */}
               <Route path="/groups">
                 <Route index element={<GroupsList />} />
                 <Route path="add" element={<AddGroupPage />} />
+                <Route path="/groups/:id/" element={<GroupProfile />} />
               </Route>
 
               {/* Teachers Pages */}
               <Route path="/teachers">
                 <Route index element={<TeachersList />} />
                 <Route path="add" element={<AddTeacherPage />} />
-                <Route path="/teachers/:id/edit" element={<EditTeacherPage />} />
+                <Route path="/teachers/:id/" element={<TeacherProfile />} />
               </Route>
 
 

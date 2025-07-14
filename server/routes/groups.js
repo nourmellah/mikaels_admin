@@ -12,4 +12,50 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET /groups/:id - get a single group by ID
+router.get('/:id', async (req, res, next) => {
+  try {
+    const group = await groupService.getGroupById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+    res.json(group);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /groups - create a new group
+router.post('/', async (req, res, next) => {
+  try {
+    const newGroup = await groupService.createGroup(req.body);
+    res.status(201).json(newGroup);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /groups/:id - update an existing group
+router.put('/:id', async (req, res, next) => {
+  try {
+    const updatedGroup = await groupService.updateGroup(req.params.id, req.body);
+    if (!updatedGroup) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+    res.json(updatedGroup);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /groups/:id - delete a group
+router.delete('/:id', async (req, res, next) => {
+  try {
+    await groupService.deleteGroup(req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

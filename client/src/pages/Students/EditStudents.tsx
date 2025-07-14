@@ -205,11 +205,10 @@ export default function EditStudentPage() {
                 <div className="md:col-span-2 flex items-center gap-2">
                   <Switch
                     onChange={() => setHasCv(prev => !prev)}
-                    label=""
+                    label="CV fourni"
                     defaultChecked={hasCv}
                     key={String(hasCv)}
                   />
-                  <Label>CV fourni</Label>
                 </div>
               </div>
             </ComponentCard>
