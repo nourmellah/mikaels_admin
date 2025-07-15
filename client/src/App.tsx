@@ -28,6 +28,8 @@ import GroupsList from "./pages/Groups/GroupsList";
 import StudentProfile from "./pages/Students/StudentProfile";
 import TeacherProfile from "./pages/Teachers/TeacherProfile";
 import GroupProfile from "./pages/Groups/GroupProfile";
+import AddCostPage from "./pages/Costs/AddCosts";
+import CostsList from "./pages/Costs/CostsList";
 
 export default function App() {
   return (
@@ -61,6 +63,14 @@ export default function App() {
                 <Route path="/teachers/:id/" element={<TeacherProfile />} />
               </Route>
 
+              {/* Costs Pages */}
+              <Route path="/costs">
+                <Route index element={<CostsList />} />
+                <Route path="add" element={<AddCostPage />} />
+                <Route path="/costs/:id/" element={<TeacherProfile />} />
+              </Route>
+
+              
 
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
