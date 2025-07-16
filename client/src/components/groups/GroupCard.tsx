@@ -36,7 +36,7 @@ export default function GroupCard({ group, professorName, level, onUpdated }: Pr
       >
         {/* Main info */}
         <div className="flex items-center gap-6">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 truncate">
+          <h3 className="w-24 flex-shrink-0 text-lg font-semibold text-gray-800 dark:text-white/90 truncate text-center">
             {group.name}
           </h3>
           {/* Level and Professor */}

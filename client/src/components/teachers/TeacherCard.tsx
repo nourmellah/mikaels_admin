@@ -16,6 +16,12 @@ export default function TeacherCard({ teacher, phone, onUpdated }: Props) {
   const navigate = useNavigate();
   const model = new Teacher(teacher);
 
+  const imageSrc = teacher.imageUrl
+    ? teacher.imageUrl.startsWith('http')
+      ? teacher.imageUrl
+      : `${api.defaults.baseURL}${teacher.imageUrl}`
+    : undefined;
+
   const handleSubmit = async (data: TeacherPayload) => {
     try {
       const res = await api.put(`/teachers/${teacher.id}`, data);
@@ -41,7 +47,17 @@ export default function TeacherCard({ teacher, phone, onUpdated }: Props) {
         {/* Avatar */}
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-            <span className="text-gray-500 dark:text-gray-400">N/A</span>
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                alt={`${teacher.firstName} ${teacher.lastName}`}
+                className="h-23 w-23 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+              <span className="text-gray-500 dark:text-gray-400">{teacher.firstName[0]}  {teacher.lastName[0]}</span>
+              </div>
+            )}
           </div>
           {/* Meta */}
           <div className="flex flex-col gap-1">

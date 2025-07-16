@@ -19,7 +19,7 @@ export interface StudentPayload {
   groupId: string | null;
   level: string | null;
   hasCv: boolean;
-  imageUrl?: File | null;
+  imageUrl?: string | null;
 }
 
 interface Option { value: string; label: string; }
@@ -42,6 +42,9 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
   const [imageUrl, setImageUrl] = useState<File | null>(null);
   const [groups, setGroups] = useState<Option[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [previewUrl, setPreviewUrl] = useState<string>(initialData?.imageUrl ?? '');
+  const [uploading, setUploading] = useState<boolean>(false);
+
 
   // load group options for dropdown
   useEffect(() => {
@@ -62,8 +65,36 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
     return errs;
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setImageUrl(file);
+    if (file) {
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let uploadedUrl: string | null = null;
+    if (imageUrl) {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', imageUrl);
+
+      try {
+        // POST to your Express /upload route fileciteturn2file1
+        const { data } = await api.post<{ url: string }>('/upload', formData);
+        uploadedUrl = data.url;
+      } catch (err) {
+        console.error('Image upload failed', err);
+        setUploading(false);
+        throw err;
+      } finally {
+        setUploading(false);
+      }
+    }
+
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
@@ -78,7 +109,7 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
       groupId: groupId || null,
       level: level || null,
       hasCv,
-      imageUrl
+      imageUrl: uploadedUrl,
     });
   };
 
@@ -118,7 +149,11 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
                 </div>
                 <div className="md:col-span-2">
                   <Label>Photo de profil</Label>
-                  <FileInput onChange={e => setImageUrl(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
+                  <FileInput onChange={handleFileChange} />
+                  {previewUrl && (
+                    <img src={previewUrl} alt="Aperçu" className="mt-2 h-24 w-24 object-cover rounded" />
+                  )}
+                  {uploading && <p>Uploading…</p>}
                 </div>
               </div>
             </ComponentCard>
@@ -128,7 +163,7 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label>Groupe</Label>
-                  <Select options={groups} onChange={setGroupId} key={groupId} defaultValue={groupId}/>
+                  <Select options={groups} onChange={setGroupId} key={groupId} defaultValue={groupId} />
                   {errors.groupId && <p className="text-red-600 text-sm">{errors.groupId}</p>}
                 </div>
                 <div>
@@ -164,7 +199,7 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
             </button>
           </div>
         </div>
-                    
+
       </ComponentCard>
     </form>
   );

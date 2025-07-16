@@ -28,7 +28,6 @@ app.use('/users', usersRouter);
 app.use('/api/hello', require('./routes/hello'));
 app.use('/auth', require('./routes/auth'));
 
-/*app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); FOR IMAGE UPLOADS LATER */
 app.use('/groups', require('./routes/groups'));
 app.use('/students', require('./routes/students'));
 app.use('/teachers', require('./routes/teachers'));
@@ -36,5 +35,7 @@ app.use('/teachers', require('./routes/teachers'));
 app.use('/costs', require('./routes/costs'));
 app.use('/costs/:costId/occurrences', require('./routes/costOccurrences'));
 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/upload', require('./routes/upload') );
 
 module.exports = app;

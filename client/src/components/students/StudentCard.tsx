@@ -16,6 +16,12 @@ export default function StudentCard({ student, groupName, onUpdated }: Props) {
   const navigate = useNavigate();
   const model = new Student(student);
 
+  const imageSrc = student.imageUrl
+    ? student.imageUrl.startsWith('http')
+      ? student.imageUrl
+      : `${api.defaults.baseURL}${student.imageUrl}`
+    : undefined;
+
   const handleSubmit = async (data: StudentPayload) => {
     try {
       const res = await api.put(`/students/${student.id}`, data);
@@ -41,7 +47,14 @@ export default function StudentCard({ student, groupName, onUpdated }: Props) {
         {/* Avatar */}
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-            <span className="text-gray-500 dark:text-gray-400">N/A</span>
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                className="h-12 w-12 rounded-full object-cover"
+              />
+            ) : (
+              <span className="text-gray-500 dark:text-gray-400">{student.firstName[0]}  {student.lastName[0]}</span>
+            )}
           </div>
           {/* User meta */}
           <div className="flex flex-col gap-1">
