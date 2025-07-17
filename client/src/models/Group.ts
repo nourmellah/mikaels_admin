@@ -1,5 +1,5 @@
 export interface GroupNameDTO {
-  id: number | string;
+  id: string;
   name: string;
 }
 

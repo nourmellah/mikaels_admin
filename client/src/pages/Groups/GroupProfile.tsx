@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import PageMeta from '../../components/common/PageMeta';
@@ -11,8 +12,11 @@ import ComponentCard from '../../components/common/ComponentCard';
 import { GroupDTO } from '../../models/Group';
 import { TeacherDTO } from '../../models/Teacher';
 import { StudentDTO } from '../../models/Student';
-import GroupCostBar from '../../components/groups/GroupCostBar';
+import GroupCostBar from '../../components/ecommerce/SegmentedBar';
 import { CostDTO } from '../../models/Cost';
+import StartGroupNotice from '../../components/groups/StartGroupNotice';
+import { PaymentDTO } from '../../models/Payment';
+import { RegistrationDTO } from '../../models/Registration';
 
 export default function GroupProfile() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +25,9 @@ export default function GroupProfile() {
   const [students, setStudents] = useState<StudentDTO[]>([]);
   const [totalRunningCosts, setTotalRunningCosts] = useState(0);
   const [groupCount, setGroupCount] = useState(1);
+  const [registrations, setRegistrations] = useState<RegistrationDTO[]>([]);
+  const [payments, setPayments] = useState<PaymentDTO[]>([]);
+
 
   useEffect(() => {
     async function fetchData() {
@@ -45,6 +52,18 @@ export default function GroupProfile() {
         const sumCosts = costsRes.data.reduce((sum, c) => sum + c.amount, 0);
         setTotalRunningCosts(sumCosts);
         setGroupCount(groupsRes.data.length || 1);
+        // Load registrations for this group
+        const regsRes = await api.get<RegistrationDTO[]>('/registrations');
+        const groupRegs = regsRes.data.filter(r => r.groupId === id);
+        setRegistrations(groupRegs);
+
+        // Load all payments and filter to this group's registrations
+        const payRes = await api.get<PaymentDTO[]>('/payments');
+        const groupPayments = payRes.data.filter(p =>
+          groupRegs.some(r => r.id === p.registrationId)
+        );
+        setPayments(groupPayments);
+
       } catch (err) {
         console.error('Error loading group profile data:', err);
       }
@@ -61,7 +80,7 @@ export default function GroupProfile() {
   const runningShare = totalRunningCosts / groupCount;
   const totalCosts = teacherCost + runningShare;
   // BLUE : amount already paid
-  const paidAmount = 0; // placeholder
+  const paidAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const expectedRevenue = group.price * students.length;
   // YELLOW : expected amount not paid yet
   const expectedAmount = Math.max(0, expectedRevenue - paidAmount);
@@ -106,12 +125,19 @@ export default function GroupProfile() {
         {/* Costs bar */}
         <ComponentCard title="Coûts du groupe">
           <GroupCostBar
-            paidAmount={paidAmount}
-            expectedAmount={expectedAmount - Math.abs(profit)} // not count loss or plus
-            lossAmount={lossAmount}
-            surplusAmount={surplusAmount}
+            blue={paidAmount}
+            yellow={expectedAmount - paidAmount} // not count loss or plus
+            red={lossAmount}
+            green={surplusAmount}
           />
         </ComponentCard>
+
+        <StartGroupNotice
+          group={group}
+          onStarted={(startDate, endDate) =>
+            setGroup({ ...group, startDate, endDate })
+          }
+        />
 
         {/* Details section */}
         <ComponentCard title="Détailes du groupe">

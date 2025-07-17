@@ -7,6 +7,7 @@ import StudentInfo from '../../components/students/StudentInfo';
 import api from '../../api';
 import { StudentDTO } from '../../models/Student';
 import { GroupNameDTO } from '../../models/Group';
+import CurrentStudentRegistration from '../../components/students/CurrentStudentRegistration';
 
 export default function StudentProfile() {
   const { id } = useParams<{ id: string }>();
@@ -68,6 +69,9 @@ export default function StudentProfile() {
           groupName={groupName}
           onUpdated={handleUpdate}
         />
+        { group && (
+          <CurrentStudentRegistration studentId={student.id} currentGroupId={group.id} />
+        ) }
         <StudentInfo student={student} groupName={groupName} />
         <div className="flex justify-end">
           <button

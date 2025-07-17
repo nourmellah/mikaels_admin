@@ -16,21 +16,43 @@ export default function StudentCard({ student, groupName, onUpdated }: Props) {
   const navigate = useNavigate();
   const model = new Student(student);
 
+  const originalGroup = student.groupId;
+
   const imageSrc = student.imageUrl
     ? student.imageUrl.startsWith('http')
       ? student.imageUrl
       : `${api.defaults.baseURL}${student.imageUrl}`
     : undefined;
 
-  const handleSubmit = async (data: StudentPayload) => {
+    const handleEditSubmit = async (data: StudentPayload) => {
     try {
+      // 1. Update student
       const res = await api.put(`/students/${student.id}`, data);
       onUpdated(res.data);
       setIsEditing(false);
+
+      // 2. If group changed and new group is set, create registration
+      if (data.groupId && data.groupId !== originalGroup) {
+        // fetch group price
+        const grp = await api.get(`/groups/${data.groupId}`);
+        const agreedPrice = grp.data.price;
+        const today = new Date().toISOString().split('T')[0];
+
+        await api.post('/registrations', {
+          studentId:     student.id,
+          groupId:       data.groupId,
+          agreedPrice,
+          depositPct:    50,
+          discountAmount: 0,
+          registrationDate: today,
+          status:        'active',
+        });
+      }
     } catch (err) {
-      console.error('Failed to update student:', err);
+      console.error('Échec mise à jour étudiant/inscription', err);
     }
   };
+
 
   const openEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -79,7 +101,7 @@ export default function StudentCard({ student, groupName, onUpdated }: Props) {
         <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} className='max-w-[1400px]'>
           <StudentForm
             initialData={student}
-            onSubmit={handleSubmit}
+            onSubmit={handleEditSubmit}
             onCancel={() => setIsEditing(false)}
           />
         </Modal>

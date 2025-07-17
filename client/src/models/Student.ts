@@ -6,12 +6,12 @@
  * Fields mirror the server-side DTO for /students.
  */
 export interface StudentDTO {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
   phone?: string | null;
-  groupId?: number | null;
+  groupId?: string | null;
   level?: string | null;
   hasCv: boolean;
   imageUrl?: string | null;
@@ -23,12 +23,12 @@ export interface StudentDTO {
  * A richer Student model with helper methods.
  */
 export class Student {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
   phone: string | null;
-  groupId: number | null;
+  groupId: string | null;
   level: string | null;
   hasCv: boolean;
   imageUrl: string | null;

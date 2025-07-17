@@ -1,4 +1,4 @@
-import React from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useNavigate } from 'react-router-dom';
 import PageMeta from '../../components/common/PageMeta';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
@@ -10,15 +10,35 @@ export default function AddStudentPage() {
 
   const handleSubmit = async (data: StudentPayload) => {
     try {
-      await api.post('/students', data);
-      navigate('/students', { replace: true });
-    } catch (err) {
-      console.error('Create student error:', err);
+      // Create the student
+      const res = await api.post('/students', data);
+      const student = res.data;
+
+      // If assigned to a group, create registration
+      if (data.groupId) {
+        const grpRes = await api.get(`/groups/${data.groupId}`);
+        const agreedPrice = grpRes.data.price;
+        const today = new Date().toISOString().split('T')[0];
+
+        await api.post('/registrations', {
+          studentId: student.id,
+          groupId: data.groupId,
+          agreedPrice,
+          depositPct: 50,
+          discountAmount: 0,
+          registrationDate: today,
+          status: 'active',
+        });
+      }
+
+      navigate('/students');
+    } catch (err: any) {
+      console.error('Failed to create student or registration:', err);
     }
   };
 
   const handleCancel = () => {
-    navigate('/students', { replace: true });
+    navigate('/students');
   };
 
   return (

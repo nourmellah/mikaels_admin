@@ -35,6 +35,9 @@ app.use('/teachers', require('./routes/teachers'));
 app.use('/costs', require('./routes/costs'));
 app.use('/costs/:costId/occurrences', require('./routes/costOccurrences'));
 
+app.use('/registrations',   require('./routes/registrations'));
+app.use('/payments',        require('./routes/payments'));
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/upload', require('./routes/upload') );
 
