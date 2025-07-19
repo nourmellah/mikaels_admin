@@ -28,31 +28,31 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    path: "/",
   },
   {
     icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
+    name: "Calendrier",
+    path: "/schedule",
   },
   {
     icon: <UserCircleIcon />,
-    name: "Students",
+    name: "Etudiants",
     path: "/students",
   },
   {
     icon: <UserCircleIcon />,
-    name: "Teachers",
+    name: "Professeurs",
     path: "/teachers",
   },
   {
     icon: <UserCircleIcon />,
-    name: "Groups",
+    name: "Groupes",
     path: "/groups",
   },
   {
     icon: <PieChartIcon />,
-    name: "Costs",
+    name: "Couts",
     path: "/costs",
   },
   {

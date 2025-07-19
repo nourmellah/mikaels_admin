@@ -14,7 +14,7 @@ export interface CostPayload {
   type: string;
   amount: number;
   frequency: string;
-  startDate: string;
+  startDate?: string;
   nextDueDate?: string;
   paid: boolean;
 }
@@ -65,7 +65,7 @@ export default function CostForm({ initialData, onSubmit, onCancel }: CostFormPr
       type,
       amount: Number(amount),
       frequency,
-      startDate,
+      startDate: startDate || undefined,
       nextDueDate: nextDueDate || undefined,
       paid
     });
@@ -83,7 +83,7 @@ export default function CostForm({ initialData, onSubmit, onCancel }: CostFormPr
               </div>
               <div className="sm:col-span-2">
                 <Label>Description</Label>
-                <TextArea value={description} onChange={value => setDescription(value)} rows={11}/>
+                <TextArea value={description} onChange={value => setDescription(value)} rows={11} />
               </div>
               <div>
                 <Label>Type</Label>
@@ -93,15 +93,6 @@ export default function CostForm({ initialData, onSubmit, onCancel }: CostFormPr
           </div>
           <div className='space-y-6'>
             <ComponentCard title="Détails financiers">
-              <div>
-                <Label>Fréquence</Label>
-                <Select
-                  options={frequencyOptions}
-                  defaultValue={frequency}
-                  onChange={(value: string) => setFrequency(value as 'one_time' | 'weekly' | 'monthly' | 'yearly')}
-                  disabled={isVariable}
-                />
-              </div>
               <div>
                 <Label>Montant</Label>
                 <InputField
@@ -118,15 +109,25 @@ export default function CostForm({ initialData, onSubmit, onCancel }: CostFormPr
                   onChange={dates => setStartDate(dates[0]?.toISOString().slice(0, 10) ?? '')}
                 />
               </div>
-              <div>
-                <Label>Date d'échéance</Label>
-                <DatePicker
-                  id="nextDueDate"
-                  defaultDate={nextDueDate ? new Date(nextDueDate) : undefined}
-                  onChange={dates => setNextDueDate(dates[0]?.toISOString().slice(0, 10) ?? '')}
-                  disabled={isVariable}
-                />
-              </div>
+              {isVariable ? '' : (<>
+                <div>
+                  <Label>Date d'échéance</Label>
+                  <DatePicker
+                    id="nextDueDate"
+                    defaultDate={nextDueDate ? new Date(nextDueDate) : undefined}
+                    onChange={dates => setNextDueDate(dates[0]?.toISOString().slice(0, 10) ?? '')}
+                    disabled={isVariable}
+                  />
+                </div>
+                <div>
+                  <Label>Fréquence</Label>
+                  <Select
+                    options={frequencyOptions}
+                    defaultValue={frequency}
+                    onChange={(value: string) => setFrequency(value as 'one_time' | 'weekly' | 'monthly' | 'yearly')}
+                    disabled={isVariable}
+                  />
+                </div></>)}
               <div className="sm:col-span-2 flex items-center">
                 <Switch defaultChecked={paid} onChange={setPaid} label={'Payé'} />
               </div>

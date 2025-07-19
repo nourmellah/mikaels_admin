@@ -140,7 +140,6 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
                 <div className="md:col-span-2">
                   <Label>Téléphone</Label>
                   <PhoneInput
-                    key={phone}
                     defaultValue={phone}
                     selectPosition="start"
                     countries={[{ code: 'TN', label: '+216' }]}
