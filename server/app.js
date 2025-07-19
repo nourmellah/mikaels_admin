@@ -41,4 +41,6 @@ app.use('/payments',        require('./routes/payments'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/upload', require('./routes/upload') );
 
+app.use('/group-schedules', require('./routes/groupSchedules'));
+
 module.exports = app;

@@ -30,6 +30,7 @@ import TeacherProfile from "./pages/Teachers/TeacherProfile";
 import GroupProfile from "./pages/Groups/GroupProfile";
 import AddCostPage from "./pages/Costs/AddCosts";
 import CostsList from "./pages/Costs/CostsList";
+import WeeklyCalendarDashboard from "./pages/Schedule/WeeklyCalendarDashboard";
 
 export default function App() {
   return (
@@ -70,7 +71,10 @@ export default function App() {
                 <Route path="/costs/:id/" element={<TeacherProfile />} />
               </Route>
 
-              
+              {/* Schedule Pages */}
+              <Route path="/schedule">
+                <Route index element={<WeeklyCalendarDashboard />} />
+              </Route>
 
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
