@@ -1,8 +1,12 @@
 export interface CalendarEvent {
-  id:        string;
-  title:     string;
-  start:     Date;
-  end:       Date;
-  groupId:   string;
-  color?:    string;
+  id: string;
+  title: string;
+  start?: Date;
+  end?: Date;
+  extendedProps: {
+    sessionId: string | null;
+    status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+    teacherName?: string;
+    groupId: string;
+  };
 }

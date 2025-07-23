@@ -42,5 +42,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/upload', require('./routes/upload') );
 
 app.use('/group-schedules', require('./routes/groupSchedules'));
+app.use('/group-sessions', require('./routes/groupSessions'));
+/* require('./jobs/sessionGenerator'); SESSION GENERATOR JOB */
 
 module.exports = app;
