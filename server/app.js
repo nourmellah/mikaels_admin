@@ -33,7 +33,8 @@ app.use('/students', require('./routes/students'));
 app.use('/teachers', require('./routes/teachers'));
 
 app.use('/costs', require('./routes/costs'));
-app.use('/costs/:costId/occurrences', require('./routes/costOccurrences'));
+app.use('/cost-templates/', require('./routes/costTemplates'));
+require('./jobs/costsScheduler'); // Cost generation job
 
 app.use('/registrations',   require('./routes/registrations'));
 app.use('/payments',        require('./routes/payments'));
