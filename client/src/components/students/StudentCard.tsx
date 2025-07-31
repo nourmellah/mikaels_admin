@@ -9,9 +9,19 @@ interface Props {
   student: StudentDTO;
   groupName: string;
   onUpdated: (s: StudentDTO) => void;
+  paymentsTotal?: number;
+  paymentsDue?: number;
+  registrationId?: string;
 }
 
-export default function StudentCard({ student, groupName, onUpdated }: Props) {
+export default function StudentCard({
+  student,
+  groupName,
+  onUpdated,
+  paymentsTotal = 0,
+  paymentsDue = 0,
+  registrationId,
+}: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const navigate = useNavigate();
   const model = new Student(student);
@@ -24,35 +34,31 @@ export default function StudentCard({ student, groupName, onUpdated }: Props) {
       : `${api.defaults.baseURL}${student.imageUrl}`
     : undefined;
 
-    const handleEditSubmit = async (data: StudentPayload) => {
+  const handleEditSubmit = async (data: StudentPayload) => {
     try {
-      // 1. Update student
       const res = await api.put(`/students/${student.id}`, data);
       onUpdated(res.data);
       setIsEditing(false);
 
-      // 2. If group changed and new group is set, create registration
       if (data.groupId && data.groupId !== originalGroup) {
-        // fetch group price
         const grp = await api.get(`/groups/${data.groupId}`);
         const agreedPrice = grp.data.price;
         const today = new Date().toISOString().split('T')[0];
 
         await api.post('/registrations', {
-          studentId:     student.id,
-          groupId:       data.groupId,
+          studentId: student.id,
+          groupId: data.groupId,
           agreedPrice,
-          depositPct:    50,
+          depositPct: 50,
           discountAmount: 0,
           registrationDate: today,
-          status:        'active',
+          status: 'active',
         });
       }
     } catch (err) {
       console.error('Échec mise à jour étudiant/inscription', err);
     }
   };
-
 
   const openEdit = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -83,18 +89,36 @@ export default function StudentCard({ student, groupName, onUpdated }: Props) {
             <p className="text-lg font-semibold text-gray-800 dark:text-white/90">
               {model.fullName}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {groupName} | {model.level || '–'}
-            </p>
+            <div className="mt-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {groupName} | {model.level || '–'}
+              </p>
+              {registrationId && (<p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                Paiements: {paymentsTotal.toFixed(2)} TND payés / {paymentsDue.toFixed(2)} TND restants
+              </p>)}
+            </div>
           </div>
         </div>
-        {/* Edit button */}
-        <button
-          onClick={openEdit}
-          className="flex items-center gap-2 text-sm font-medium rounded-lg bg-white/[0.03] py-2.5 px-4 text-gray-800 dark:text-gray-200 hover:bg-white/[0.05]"
-        >
-          Éditer
-        </button>
+        {/* Edit and add‐payment buttons */}
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={openEdit}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.03] text-gray-800 dark:text-gray-200 hover:bg-white/[0.05]"
+          >
+            Éditer
+          </button>
+          {registrationId && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/payments/new?registration=${registrationId}`);
+              }}
+              className="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Ajouter paiement
+            </button>
+          )}
+        </div>
       </div>
 
       {isEditing && (

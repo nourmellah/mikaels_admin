@@ -20,13 +20,15 @@ export default function AddStudentPage() {
         const agreedPrice = grpRes.data.price;
         const today = new Date().toISOString().split('T')[0];
 
+        console.log('Creating registration for student:', student.id, 'in group:', data.groupId);
+
         await api.post('/registrations', {
-          studentId: student.id,
-          groupId: data.groupId,
-          agreedPrice,
-          depositPct: 50,
-          discountAmount: 0,
-          registrationDate: today,
+          student_id: student.id,        // ← snake_case
+          group_id: data.groupId,      // ← snake_case
+          agreed_price: agreedPrice,       // ← snake_case
+          deposit_pct: 0,                // default or data.depositPct
+          discount_amount: 0,                 // or data.discountAmount
+          registration_date: today,             // ← snake_case
           status: 'active',
         });
       }

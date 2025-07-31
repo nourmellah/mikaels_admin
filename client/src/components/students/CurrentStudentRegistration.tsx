@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { Modal } from '../ui/modal';
-import GroupCostBar from '../ecommerce/SegmentedBar';
+import SegmentedBar from '../ecommerce/SegmentedBar';
 import { RegistrationDTO } from '../../models/Registration';
 import { PaymentDTO } from '../../models/Payment';
 import { GroupDTO } from '../../models/Group';
+import StudentPaymentForm from './StudentPaymentForm';
+import { StudentPaymentSummaryDTO } from '../../models/StudentPaymentSummary';
 
 interface Props {
 	studentId: string;
@@ -16,33 +18,53 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 	const [registration, setRegistration] = useState<RegistrationDTO | null>(null);
 	const [group, setGroup] = useState<GroupDTO | null>(null);
 	const [payments, setPayments] = useState<PaymentDTO[]>([]);
-	const [paidAmount, setPaidAmount] = useState(0);
 	const [showModal, setShowModal] = useState(false);
-	const [payAmount, setPayAmount] = useState('');
+	const [discount, setDiscount] = useState<number>(0);
+	const [payAmount, setPayAmount] = useState<string>('0');
+	const [paidAmount, setPaidAmount] = useState<number>(0);
+	const [outstandingAmount, setOutstandingAmount] = useState<number>(0);
+
+	const loadSummary = React.useCallback(async () => {
+		if (!studentId || !currentGroupId) return;
+		const sumRes = await api.get<StudentPaymentSummaryDTO>(
+			`/registrations/summary?student_id=${studentId}&group_id=${currentGroupId}`
+		);
+		setPaidAmount(sumRes.data.totalPaid);
+		setOutstandingAmount(sumRes.data.outstandingAmount);
+	}, [studentId, currentGroupId]);
 
 	useEffect(() => {
 		async function fetchData() {
 			if (!studentId || !currentGroupId) return;
-			const regsRes = await api.get<RegistrationDTO[]>('/registrations');
-			const regs = regsRes.data.filter(
-				r => r.studentId === studentId && r.groupId === currentGroupId
+
+			// fetch the registration itself
+			const regRes = await api.get<RegistrationDTO[]>(
+				`/registrations?student_id=${studentId}&group_id=${currentGroupId}`
 			);
-			if (!regs.length) return;
-			const reg = regs[regs.length - 1];
+			const reg = regRes.data[0];
+			if (!reg) return;
 			setRegistration(reg);
-			const grpRes = await api.get<GroupDTO>(`/groups/${currentGroupId}`);
+
+			// fetch the group
+			const grpRes = await api.get<GroupDTO>(
+				`/groups/${currentGroupId}`
+			);
 			setGroup(grpRes.data);
-			const payRes = await api.get<PaymentDTO[]>(`/payments/registration/${reg.id}`);
-			setPayments(payRes.data);
-			setPaidAmount(payRes.data.reduce((sum, p) => sum + Number(p.amount), 0));
+			setDiscount(reg.discountAmount || 0);
+
+			// fetch the summary (total_paid & outstanding_amount)
+			await loadSummary();
 		}
+
 		fetchData();
-	}, [studentId, currentGroupId]);
+	}, [studentId, currentGroupId, paidAmount, outstandingAmount, loadSummary]);
 
 	if (!registration || !group) return null;
 
-	const { agreedPrice } = registration;
-	const paidPct = agreedPrice > 0 ? (paidAmount / agreedPrice) * 100 : 0;
+	const netPrice = registration.agreedPrice;
+	const paidPct = netPrice > 0
+		? (paidAmount / netPrice) * 100
+		: 0;
 
 	let weeksRunning = 0;
 	let isHalfway = false;
@@ -66,16 +88,25 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 		if (isNaN(amt) || amt <= 0 || !registration) return;
 		const today = new Date().toISOString().split('T')[0];
 		await api.post('/payments', {
-			registrationId: registration.id,
+			registration_id: registration.id,
 			amount: amt,
 			date: today,
-			isPaid: true,
+			is_paid: true,
+		});
+		await api.put(`/registrations/${registration.id}`, {
+			agreed_price: group.price * (100 - discount) / 100,
+			discount_amount: discount,
 		});
 		setShowModal(false);
 		setPayAmount('');
-		const payRes = await api.get<PaymentDTO[]>(`/payments/registration/${registration.id}`);
+		const payRes = await api.get<PaymentDTO[]>(
+			`/payments?registration_id=${registration.id}`
+		);
 		setPayments(payRes.data);
-		setPaidAmount(payRes.data.reduce((sum, p) => sum + p.amount, 0));
+		setPaidAmount(
+			payRes.data.reduce((sum, p) => sum + Number(p.amount), 0)
+		);
+		loadSummary();
 	};
 
 	return (
@@ -114,19 +145,24 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 								</p>
 							</div>
 						)}
-						<div className="lg:col-span-2">
+						<div className="lg:col-span-4">
 							<p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
 								Paiement
 							</p>
-							<GroupCostBar
-								blue={paidAmount}
-								yellow={0}
-								red={agreedPrice - paidAmount}
-								green={0}
+							<SegmentedBar
+								segments={[
+									{ value: paidAmount, label: 'Payé', color: '#3182ce' },
+									{ value: outstandingAmount, label: 'Restant', color: '#e53e3e' },
+									{ value: discount, label: 'Remise', color: '#48bb78' },
+								]}
+								showLabels
+								showValues
+								height='h-16'
 							/>
 							<p className="mt-2 text-sm font-medium text-gray-800 dark:text-white/90">
-								Payé: {paidAmount} TND ({paidPct.toFixed(0)}%)
+								Payé: {paidAmount} TND ({paidPct.toFixed(2)}%) — Remisé: {group.price - netPrice} TND
 							</p>
+
 							{runningBehind && (
 								<p className="mt-2 text-red-600 font-medium">
 									L'étudiant est en retard sur les paiements
@@ -146,38 +182,17 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 			</div>
 
 			{showModal && (
-				<Modal isOpen onClose={() => setShowModal(false)} className='max-w-[700px]'>
-					<form onSubmit={handlePay} className="space-y-4 p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
-						<h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-							Enregistrer un paiement
-						</h4>
-						<div>
-							<label className="mb-2 block text-xs text-gray-500 dark:text-gray-400">
-								Montant TND
-							</label>
-							<input
-								type="number"
-								value={payAmount}
-								onChange={e => setPayAmount(e.target.value)}
-								className="mt-1 block w-full border border-gray-300 rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-white"
-							/>
-						</div>
-						<div className="flex justify-end gap-2">
-							<button
-								type="button"
-								onClick={() => setShowModal(false)}
-								className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded"
-							>
-								Annuler
-							</button>
-							<button
-								type="submit"
-								className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
-							>
-								Valider
-							</button>
-						</div>
-					</form>
+				<Modal isOpen onClose={() => setShowModal(false)} className="max-w-[700px]">
+					<StudentPaymentForm
+						courseCost={group.price}
+						paidAmount={paidAmount}
+						discount={discount}
+						amount={parseFloat(payAmount)}
+						onChangeDiscount={value => setDiscount(value)}
+						onChangeAmount={value => setPayAmount(value.toString())}
+						onSubmit={handlePay}
+						onCancel={() => setShowModal(false)}
+					/>
 				</Modal>
 			)}
 		</div>
