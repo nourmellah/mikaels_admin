@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageMeta from '../../components/common/PageMeta';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
@@ -6,6 +6,7 @@ import TeacherCard from '../../components/teachers/TeacherCard';
 import TeacherInfo from '../../components/teachers/TeacherInfo';
 import api from '../../api';
 import { TeacherDTO } from '../../models/Teacher';
+import TeacherPayments from '../../components/teachers/TeacherPayments';
 
 export default function TeacherProfile() {
   const { id } = useParams<{ id: string }>();
@@ -59,6 +60,8 @@ export default function TeacherProfile() {
           phone={teacher.phone || '–'}
           onUpdated={handleUpdate}
         />
+        {/** Teacher payments */}
+        <TeacherPayments teacherId={teacher.id} />
         <TeacherInfo teacher={teacher} />
         <div className="flex justify-end">
           <button
