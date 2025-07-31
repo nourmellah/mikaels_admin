@@ -23,3 +23,6 @@ class CostTemplateDTO {
     return new CostTemplateDTO(row);
   }
 }
+
+module.exports = CostTemplateDTO;
+

@@ -38,6 +38,7 @@ require('./jobs/costsScheduler'); // Cost generation job
 
 app.use('/registrations',   require('./routes/registrations'));
 app.use('/payments',        require('./routes/payments'));
+app.use('/teacher-payments', require('./routes/teacherPayments'))
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/upload', require('./routes/upload') );

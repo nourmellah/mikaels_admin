@@ -25,6 +25,19 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+// GET /groups/:id/summary
+router.get('/:id/summary', async (req, res, next) => {
+  try {
+    const summary = await groupService.getGroupCostSummary(req.params.id);
+    if (!summary) {
+      return res.status(404).json({ message: 'Cost summary not found' });
+    }
+    res.json(summary);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /groups - create a new group
 router.post('/', async (req, res, next) => {
   try {

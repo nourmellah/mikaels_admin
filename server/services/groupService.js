@@ -10,6 +10,17 @@ async function getGroupById(id) {
   return rows[0] ? GroupDTO.fromRow(rows[0]) : null;
 }
 
+/**
+ * Fetch the aggregated cost summary for a single group.
+ */
+async function getGroupCostSummary(groupId) {
+  const { rows } = await pool.query(
+    'SELECT * FROM group_cost_summary WHERE group_id = $1',
+    [groupId]
+  );
+  return rows[0] || null;
+}
+
 async function createGroup(data) {
   const { name, level, startDate, endDate, weeklyHours, totalHours, price, teacherId, imageUrl } = data;
   const { rows } = await pool.query(
@@ -62,6 +73,7 @@ function mapToColumn(field) {
 module.exports = {
   getAllGroups,
   getGroupById,
+  getGroupCostSummary,
   createGroup,
   updateGroup,
   deleteGroup

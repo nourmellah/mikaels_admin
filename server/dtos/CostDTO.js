@@ -2,13 +2,13 @@ class CostDTO {
   constructor({
     id,
     cost_template_id,
+    group_id,
     name,
     due_date,
     amount,
     paid,
     paid_date,
-    notes,
-    group_id, 
+    notes, 
     created_at,
     updated_at
   }) {
@@ -29,3 +29,5 @@ class CostDTO {
     return new CostDTO(row);
   }
 }
+
+module.exports = CostDTO;

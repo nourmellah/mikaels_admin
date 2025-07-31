@@ -25,7 +25,7 @@ async function createCost(data) {
     paid = false,
     paidDate = null,
     notes = null,
-    groupId = null           // ← new
+    groupId = null
   } = data;
 
   const { rows } = await pool.query(
@@ -74,6 +74,24 @@ async function updateCost(id, data) {
   );
 
   return rows[0] ? CostDTO.fromRow(rows[0]) : null;
+}
+
+async function getAllCosts(filter = {}) {
+  let sql = `SELECT * FROM costs`;
+  const clauses = [];
+  const params = [];
+
+  if (filter.group_id !== undefined) {
+    params.push(filter.group_id);
+    clauses.push(`group_id = $${params.length}`);
+  }
+
+  if (clauses.length) {
+    sql += ` WHERE ` + clauses.join(' AND ');
+  }
+
+  const result = await pool.query(sql, params);
+  return result.rows;
 }
 
 async function deleteCost(id) {

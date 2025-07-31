@@ -25,24 +25,30 @@ router.get('/:id', async (req, res, next) => {
 
 // POST /costs
 router.post('/', async (req, res, next) => {
-  try {
-    const newCost = await costService.createCost(req.body);
-    res.status(201).json(newCost);
-  } catch (err) {
-    next(err);
-  }
+  const { name, due_date, amount, notes, group_id } = req.body;
+  const cost = await costService.createCost({
+    name,
+    due_date,
+    amount,
+    notes,
+    group_id: group_id || null
+  });
+  res.status(201).json(cost);
 });
 
 // PUT /costs/:id
 router.put('/:id', async (req, res, next) => {
-  try {
-    const updated = await costService.updateCost(req.params.id, req.body);
-    if (!updated) return res.status(404).json({ message: 'Cost not found' });
-    res.json(updated);
-  } catch (err) {
-    next(err);
-  }
+  const { name, due_date, amount, notes, group_id } = req.body;
+  const updated = await costService.updateCost(req.params.id, {
+    name,
+    due_date,
+    amount,
+    notes,
+    group_id: group_id || null
+  });
+  res.json(updated);
 });
+
 
 // DELETE /costs/:id
 router.delete('/:id', async (req, res, next) => {
