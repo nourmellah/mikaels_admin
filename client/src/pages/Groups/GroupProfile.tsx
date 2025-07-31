@@ -13,57 +13,80 @@ import { GroupDTO } from '../../models/Group';
 import { TeacherDTO } from '../../models/Teacher';
 import { StudentDTO } from '../../models/Student';
 import GroupCostBar from '../../components/ecommerce/SegmentedBar';
-import { CostDTO } from '../../models/Cost';
 import StartGroupNotice from '../../components/groups/StartGroupNotice';
 import { PaymentDTO } from '../../models/Payment';
 import { RegistrationDTO } from '../../models/Registration';
+import { GroupSessionDTO } from '../../models/GroupSession';
+
+// Raw view result interface
+interface RawCostSummary {
+  group_id: string;
+  group_name: string;
+  total_hours: string;
+  rate: string;
+  teacher_amount_due: string;
+  teacher_paid: string;
+  teacher_unpaid: string;
+  group_total_cost: string;
+  group_paid_cost: string;
+  group_unpaid_cost: string;
+  general_paid: string;
+  general_unpaid: string;
+  total_outstanding: string;
+}
+
+// Parsed numeric summary
+interface CostSummary {
+  teacherDue: number;
+  internalTotal: number;
+  externalTotal: number;
+  totalCost: number;
+}
 
 export default function GroupProfile() {
   const { id } = useParams<{ id: string }>();
   const [group, setGroup] = useState<GroupDTO | null>(null);
   const [teacher, setTeacher] = useState<TeacherDTO | null>(null);
   const [students, setStudents] = useState<StudentDTO[]>([]);
-  const [totalRunningCosts, setTotalRunningCosts] = useState(0);
-  const [groupCount, setGroupCount] = useState(1);
   const [registrations, setRegistrations] = useState<RegistrationDTO[]>([]);
   const [payments, setPayments] = useState<PaymentDTO[]>([]);
-
+  const [sessions, setSessions] = useState<GroupSessionDTO[]>([]);
+  const [rawSummary, setRawSummary] = useState<RawCostSummary | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // fetch group
+        // Load group
         const grpRes = await api.get<GroupDTO>(`/groups/${id}`);
         const grp = grpRes.data;
         setGroup(grp);
-        // fetch teacher
+
+        // Load teacher
         if (grp.teacherId) {
           const tRes = await api.get<TeacherDTO>(`/teachers/${grp.teacherId}`);
           setTeacher(tRes.data);
         }
-        // fetch students
+
+        // Load students
         const sRes = await api.get<StudentDTO[]>('/students');
-        setStudents(sRes.data.filter(s => String(s.groupId) === String(id)));
-        // fetch costs and group count
-        const [costsRes, groupsRes] = await Promise.all([
-          api.get<CostDTO[]>('/costs'),
-          api.get<GroupDTO[]>('/groups')
-        ]);
-        const sumCosts = costsRes.data.reduce((sum, c) => sum + c.amount, 0);
-        setTotalRunningCosts(sumCosts);
-        setGroupCount(groupsRes.data.length || 1);
-        // Load registrations for this group
+        setStudents(sRes.data.filter(s => String(s.groupId) === id));
+
+        // Load registrations
         const regsRes = await api.get<RegistrationDTO[]>('/registrations');
-        const groupRegs = regsRes.data.filter(r => r.groupId === id);
+        const groupRegs = regsRes.data.filter(r => String(r.groupId) === id);
         setRegistrations(groupRegs);
 
-        // Load all payments and filter to this group's registrations
+        // Load payments
         const payRes = await api.get<PaymentDTO[]>('/payments');
-        const groupPayments = payRes.data.filter(p =>
-          groupRegs.some(r => r.id === p.registrationId)
-        );
-        setPayments(groupPayments);
+        setPayments(payRes.data.filter(p => groupRegs.some(r => r.id === p.registrationId)));
 
+        // Load sessions
+        const sessRes = await api.get<GroupSessionDTO[]>('/group-sessions');
+        setSessions(sessRes.data.filter(s => String(s.groupId) === id));
+
+        // Load cost summary from view
+        const sumRes = await api.get<RawCostSummary>(`/groups/${id}/summary`);
+        setRawSummary(sumRes.data);
       } catch (err) {
         console.error('Error loading group profile data:', err);
       }
@@ -71,39 +94,46 @@ export default function GroupProfile() {
     if (id) fetchData();
   }, [id]);
 
-  if (!group) {
-    return <div>Chargement...</div>;
-  }
+  if (!group || !rawSummary) return <div>Chargement...</div>;
 
-  // cost calculations
-  const teacherCost = teacher ? teacher.salary * group.totalHours : 0;
-  const runningShare = totalRunningCosts / groupCount;
-  const totalCosts = teacherCost + runningShare;
-  // BLUE : amount already paid
+  // Calculate expected total teacher payment (hours x salary)
+  const expectedTeacherPayment = teacher ? teacher.salary * group.totalHours : 0;
+
+  const summary: CostSummary = {
+    teacherDue: Number(rawSummary.teacher_amount_due),
+    internalTotal: Number(rawSummary.group_total_cost),
+    externalTotal:
+      Number(rawSummary.general_paid) + Number(rawSummary.general_unpaid),
+    totalCost:
+      expectedTeacherPayment +
+      Number(rawSummary.group_total_cost) +
+      Number(rawSummary.general_paid) +
+      Number(rawSummary.general_unpaid),
+  };
+
+
   const paidAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const expectedRevenue = group.price * students.length;
-  // YELLOW : expected amount not paid yet
-  const expectedAmount = Math.max(0, expectedRevenue - paidAmount);
-  const profit = (paidAmount + expectedAmount) - totalCosts;
-  // RED : loss if profit is negative
-  const lossAmount = profit < 0 ? -profit : 0;
-  // GREEN : surplus if profit is positive
-  const surplusAmount = profit > 0 ? profit : 0;
+  const unpaidAmount = Math.max(0, expectedRevenue - paidAmount);
+  const diff = expectedRevenue - summary.totalCost;
+  const diffLabel = diff >= 0 ? 'Excédent' : 'Perte';
+  const diffValue = Math.abs(diff);
 
-  console.log('Group costs:', {
-    paidAmount,
-    expectedAmount,
-    lossAmount,
-    surplusAmount,
-    totalCosts,
-    expectedRevenue,
-    profit
-  });
+  const completedHoursCost = teacher ? teacher.salary * sessions
+    .filter(s => s.status === 'COMPLETED')
+    .reduce((sum, s) => {
+      const [h1, m1, sec1] = s.startTime.split(':').map(Number);
+      const [h2, m2, sec2] = s.endTime.split(':').map(Number);
+      return (
+        sum +
+        ((h2 * 3600 + m2 * 60 + sec2) - (h1 * 3600 + m1 * 60 + sec1)) /
+        3600
+      );
+    }, 0) * teacher.salary : 0;
 
-  const handleGroupUpdate = (updated: GroupDTO) => setGroup(updated);
-  const handleTeacherUpdate = (updated: TeacherDTO) => setTeacher(updated);
-  const handleStudentUpdate = (updated: StudentDTO) =>
-    setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+
+  const isOver = summary.totalCost > paidAmount;
+
 
   return (
     <>
@@ -119,25 +149,75 @@ export default function GroupProfile() {
           group={group}
           professorName={teacher ? `${teacher.firstName} ${teacher.lastName}` : '–'}
           level={group.level}
-          onUpdated={handleGroupUpdate}
+          onUpdated={g => setGroup(g)}
         />
 
-        {/* Costs bar */}
-        <ComponentCard title="Coûts du groupe">
-          <GroupCostBar
-            blue={paidAmount}
-            yellow={expectedAmount - paidAmount} // not count loss or plus
-            red={lossAmount}
-            green={surplusAmount}
-          />
-        </ComponentCard>
-
+        {/* Start group notice */}
         <StartGroupNotice
           group={group}
+          teacher={teacher}
+          students={students}
+          weeklyHours={group.weeklyHours}
+          totalHours={group.totalHours}
+          price={group.price}
           onStarted={(startDate, endDate) =>
             setGroup({ ...group, startDate, endDate })
           }
         />
+
+        {/* Cost Analysis */}
+        <ComponentCard title="Analyse des coûts">
+          <GroupCostBar
+            segments={[
+              { value: paidAmount, label: 'Payé', color: '#3182ce' },
+              { value: unpaidAmount, label: 'À payer', color: '#d69e2e' },
+              { value: diffValue, label: diffLabel, color: diffLabel === 'Perte' ? '#e53e3e' : '#38a169' }
+            ]}
+            showLabels
+            showValues
+            height='h-14'
+          />
+
+          {/* Details grid */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Teacher Payment Info */}
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+              <h5 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Enseignant</h5>
+              <dl className="space-y-1">
+                <div className="flex justify-between">
+                  <dt className="text-gray-600 dark:text-gray-400">Total attendu</dt>
+                  <dd className="font-medium text-gray-800 dark:text-gray-100">{expectedTeacherPayment.toFixed(3)} TND</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-gray-600 dark:text-gray-400">À ce jour</dt>
+                  <dd className="font-medium text-gray-800 dark:text-gray-100">{completedHoursCost.toFixed(3)} TND</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Internal Costs */}
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+              <h5 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Coûts internes</h5>
+              <p className="font-medium text-gray-800 dark:text-gray-100">{summary.internalTotal.toFixed(3)} TND</p>
+            </div>
+
+            {/* External Costs */}
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+              <h5 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Coûts externes</h5>
+              <p className="font-medium text-gray-800 dark:text-gray-100">{summary.externalTotal.toFixed(3)} TND</p>
+            </div>
+          </div>
+
+          <hr className="my-6 border-t border-gray-300 dark:border-gray-600" />
+
+          {/* Total cost indicator */}
+          <div className="flex items-center justify-between">
+            <span className="text-base font-medium text-gray-800 dark:text-gray-100">Total Coûts</span>
+            <span className={`text-xl font-semibold ${
+              isOver ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+            }`}>{summary.totalCost.toFixed(3)} TND</span>
+          </div>
+        </ComponentCard>
 
         {/* Details section */}
         <ComponentCard title="Détailes du groupe">
@@ -149,35 +229,35 @@ export default function GroupProfile() {
               <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
                 Professeur
               </h4>
-              {teacher && (
-                <TeacherCard
-                  teacher={teacher}
-                  phone={teacher.phone || '–'}
-                  onUpdated={handleTeacherUpdate}
-                />
-              )}
+              {teacher && <TeacherCard teacher={teacher} phone={teacher.phone || '–'} onUpdated={t => setTeacher(t)} />}
             </div>
             {/* Students list */}
             <div>
-              <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
-                Étudiants ({students.length})
-              </h4>
+              <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">Étudiants ({students.length})</h4>
               <div className="space-y-4">
                 <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
 
-                  {students.map(student => (
-                    <StudentCard
-                      key={student.id}
-                      student={student}
-                      groupName={group.name}
-                      onUpdated={handleStudentUpdate}
-                    />
-                  ))}
-                  {students.length === 0 && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Aucun étudiant dans ce groupe.
-                    </p>
-                  )}
+                  {students.map(student => {
+                    const reg = registrations.find(r => r.studentId === student.id);
+                    const studentPayments = reg
+                      ? payments.filter(p => p.registrationId === reg.id)
+                      : [];
+                    const paidTotal = studentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+                    const due = Math.max(0, group.price - paidTotal);
+
+                    return (
+                      <StudentCard
+                        key={student.id}
+                        student={student}
+                        groupName={group.name}
+                        paymentsTotal={paidTotal}
+                        paymentsDue={due}
+                        registrationId={reg?.id}
+                        onUpdated={s => setStudents(prev => prev.map(st => st.id === s.id ? s : st))}
+                      />
+                    );
+                  })}
+
                 </div>
               </div>
             </div>

@@ -1,14 +1,26 @@
 // src/pages/groups/StartGroupNotice.tsx
 import api from '../../api';
 import { GroupDTO } from '../../models/Group';
+import { StudentDTO } from '../../models/Student';
+import { TeacherDTO } from '../../models/Teacher';
 
 interface StartGroupNoticeProps {
   group: GroupDTO;
+  teacher?: TeacherDTO | null;
+  students: StudentDTO[];
+  weeklyHours?: number;
+  totalHours?: number;
+  price?: number;
   onStarted: (startDay: string, endDay: string) => void;
 }
 
 export default function StartGroupNotice({
   group,
+  teacher,
+  students,
+  weeklyHours,
+  totalHours,
+  price,
   onStarted,
 }: StartGroupNoticeProps) {
   // Only show if the group hasn't been started yet
@@ -18,6 +30,14 @@ export default function StartGroupNotice({
     const confirmMsg =
       "Le groupe n'a pas encore commencé !\nVoulez-vous démarrer le groupe aujourd'hui ?";
     if (!window.confirm(confirmMsg)) return;
+
+    const hasTeacher = Boolean(teacher);
+    const hasStudents = students && students.length > 0;
+    const hasWeekly = typeof weeklyHours === 'number' && weeklyHours > 0;
+    const hasTotal = typeof totalHours === 'number' && totalHours > 0;
+    const hasPrice = typeof price === 'number' && price > 0;
+
+    console.log
 
     // Today’s date in YYYY-MM-DD
     const today = new Date();
