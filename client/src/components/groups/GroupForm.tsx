@@ -28,7 +28,7 @@ interface GroupFormProps {
 export default function GroupForm({ initialData, onSubmit, onCancel }: GroupFormProps) {
 	const [name, setName] = useState(initialData?.name ?? '');
 	const [level, setLevel] = useState(initialData?.level ?? '');
-	const [weeklyHours, setWeeklyHours] = useState(initialData?.weeklyHours?.toString() ?? '');
+	const [weeklyHours, setWeeklyHours] = useState(initialData?.weeklyHours?.toString() ?? '10');
 	const [totalHours, setTotalHours] = useState(initialData?.totalHours?.toString() ?? '');
 	const [price, setPrice] = useState(initialData?.price?.toString() ?? '');
 	const [teacherId, setTeacherId] = useState(initialData?.teacherId ?? '');
@@ -56,24 +56,40 @@ export default function GroupForm({ initialData, onSubmit, onCancel }: GroupForm
 			.catch(() => setTeachers([{ value: '', label: 'Aucun professeur' }]));
 	}, []);
 
-	// Auto-set price based on level
-	useEffect(() => {
-		if (level === 'B1' || level === 'B2') setPrice('800');
-		else if (['A1', 'A2', 'C1', 'C2'].includes(level)) setPrice('600');
-	}, [level]);
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
+	const validate = () => {
 		const newErrors: Record<string, string> = {};
 		if (!name) newErrors.name = 'Requis';
 		if (!level) newErrors.level = 'Requis';
 		if (!weeklyHours) newErrors.weeklyHours = 'Requis';
 		if (!totalHours) newErrors.totalHours = 'Requis';
 		if (!price) newErrors.price = 'Requis';
-		if (Object.keys(newErrors).length) {
+
+		if (Number(weeklyHours) <= 0) newErrors.weeklyHours = 'Doit être supérieur à 0';
+		if (Number(totalHours) <= 0) newErrors.totalHours = 'Doit être supérieur à 0';
+		if (Number(price) < 0) newErrors.price = 'Doit être positif';
+
+		return newErrors;
+	};
+
+	const handleLevelChange = (lvl: string) => {
+    setLevel(lvl);
+    if (lvl === 'B1' || lvl === 'B2') {
+      setTotalHours('80');
+      setPrice('850');
+    } else {
+      setTotalHours(initialData?.totalHours?.toString() ?? '60');
+      setPrice('700');
+    }
+  };
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		
+		const newErrors = validate();
+		if (Object.keys(newErrors).length > 0) {
 			setErrors(newErrors);
 			return;
 		}
+
 		await onSubmit({
 			name,
 			level,
@@ -97,7 +113,7 @@ export default function GroupForm({ initialData, onSubmit, onCancel }: GroupForm
 							</div>
 							<div>
 								<Label>Niveau</Label>
-								<Select options={levelOptions} defaultValue={level} onChange={setLevel} />
+                <Select options={levelOptions} defaultValue={level} onChange={handleLevelChange} />
 								{errors.level && <p className="text-red-600 text-sm">{errors.level}</p>}
 							</div>
 							<div className="sm:col-span-2">

@@ -25,27 +25,13 @@ router.get('/:id', async (req, res, next) => {
 
 // POST /costs
 router.post('/', async (req, res, next) => {
-  const { name, due_date, amount, notes, group_id } = req.body;
-  const cost = await costService.createCost({
-    name,
-    due_date,
-    amount,
-    notes,
-    group_id: group_id || null
-  });
+  const cost = await costService.createCost(req.body);
   res.status(201).json(cost);
 });
 
 // PUT /costs/:id
 router.put('/:id', async (req, res, next) => {
-  const { name, due_date, amount, notes, group_id } = req.body;
-  const updated = await costService.updateCost(req.params.id, {
-    name,
-    due_date,
-    amount,
-    notes,
-    group_id: group_id || null
-  });
+  const updated = await costService.updateCost(req.params.id, req.body);
   res.json(updated);
 });
 

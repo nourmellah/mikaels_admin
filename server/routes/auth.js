@@ -33,17 +33,37 @@ router.post('/login', async (req, res) => {
 
 // REFRESH
 router.post('/refresh', async (req, res) => {
-  const token = req.cookies.refreshToken;
-  if (!token) return res.sendStatous(401);
+  const oldToken = req.cookies.refreshToken;
+  if (!oldToken) return res.sendStatus(401);
+
   let payload;
-  try { payload = verifyRefreshToken(token); }
-  catch { return res.sendStatus(403); }
+  try {
+    payload = verifyRefreshToken(oldToken);
+  } catch {
+    return res.sendStatus(403);
+  }
 
+  // confirm the presented token matches what we have stored
   const stored = await getStoredRefreshToken(payload.sub);
-  if (stored !== token) return res.sendStatus(403);
+  if (stored !== oldToken) {
+    return res.sendStatus(403);
+  }
 
-  const newAccess = generateAccessToken(payload.sub);
-  res.json({ accessToken: newAccess });
+  // rotate: issue a new refresh token and save it
+  const newRefreshToken = generateRefreshToken(payload.sub);
+  await saveRefreshToken(payload.sub, newRefreshToken);
+
+  // set the fresh cookie
+  res.cookie('refreshToken', newRefreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  // issue a new short‐lived access token
+  const newAccessToken = generateAccessToken(payload.sub);
+  res.json({ accessToken: newAccessToken });
 });
 
 // LOGOUT

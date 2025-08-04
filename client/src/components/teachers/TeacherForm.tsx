@@ -32,6 +32,7 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
   const [salary, setSalary] = useState(
     initialData?.salary != null ? String(initialData.salary) : ''
   );
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [imageUrl, setImageUrl] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(initialData?.imageUrl ?? '');
@@ -47,8 +48,25 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
     }
   };
 
+  const validate = () => {
+    const errors: Record<string, string> = {};
+    if (!firstName) errors.firstName = 'Requis';
+    if (!lastName) errors.lastName = 'Requis';
+    if (!phone) errors.phone = 'Requis';
+    if (!salary || isNaN(Number(salary)) || Number(salary) <= 0) {
+      errors.salary = 'Requis et doit être un nombre positif';
+    }
+    return errors;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors = validate();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
     let uploadedUrl: string | null = null;
     if (imageUrl) {
@@ -89,14 +107,17 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
               <div>
                 <Label>Prénom</Label>
                 <InputField value={firstName} onChange={e => setFirstName(e.target.value)} />
+                {errors.firstName && <p className="text-red-600 text-sm">{errors.firstName}</p>}
               </div>
               <div>
                 <Label>Nom</Label>
                 <InputField value={lastName} onChange={e => setLastName(e.target.value)} />
+                {errors.lastName && <p className="text-red-600 text-sm">{errors.lastName}</p>}
               </div>
               <div className="sm:col-span-2">
                 <Label>E-mail</Label>
                 <InputField type="email" value={email} onChange={e => setEmail(e.target.value)} />
+
               </div>
               <div className="sm:col-span-2">
                 <Label>Téléphone</Label>
@@ -106,6 +127,7 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
                   countries={countries}
                   onChange={setPhone}
                 />
+                {errors.phone && <p className="text-red-600 text-sm">{errors.phone}</p>}
               </div>
             </ComponentCard>
           </div>
@@ -113,13 +135,14 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
           <div className="space-y-6">
             <ComponentCard title="Informations professionnelles">
               <div>
-                <Label>Salaire</Label>
+                <Label>Salaire par heure</Label>
                 <InputField
                   type="number"
                   value={salary}
                   onChange={e => setSalary(e.target.value)}
                 />
               </div>
+              {errors.salary && <p className="text-red-600 text-sm">{errors.salary}</p>}
               <div className="sm:col-span-2">
                 <Label>Photo de profil</Label>
                 <FileInput onChange={handleFileChange} />

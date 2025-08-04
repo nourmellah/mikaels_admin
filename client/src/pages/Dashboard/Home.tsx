@@ -1,118 +1,154 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/Dashboard.tsx
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../api';
-import { MetricCard, ChartCard, DataTable } from '../../components/dashboard/DashboardWidgets';
-import SegmentedBar from '../../components/ecommerce/SegmentedBar';
-import MonthlySalesChart from '../../components/ecommerce/MonthlySalesChart';
-import MonthlyTarget from '../../components/ecommerce/MonthlyTarget';
-import { User, Users, Calendar, AlertCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertCircle, Calendar } from 'lucide-react';
 
-export default function Dashboard() {
-  const [studentCount, setStudentCount] = useState<number>(0);
-  const [groupCount, setGroupCount]     = useState<number>(0);
-  const [lessonCount, setLessonCount]   = useState<number>(0);
-  const [overdueCount, setOverdueCount] = useState<number>(0);
-  const [monthlyRegs, setMonthlyRegs]   = useState<Array<{ month: string; value: number }>>([]);
-  const [totalRevenue, setTotalRevenue] = useState<number>(0);
-  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+interface DashboardMetrics {
+  net_cash_all_time: string;
+  student_paid_monthly: string;
+  student_expected_monthly: string;
+  teacher_paid_monthly: string;
+  teacher_expected_monthly: string;
+  cost_paid_monthly: string;
+  cost_expected_monthly: string;
+}
+
+interface SessionRow {
+  source: string;
+  group_name: string;
+  teacher_name: string;
+  session_date: string;
+  time: string;
+}
+
+export default function Home() {
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
 
   useEffect(() => {
-    async function fetchData() {
-      // Students and Groups
-      const [stuRes, grpRes] = await Promise.all([
-        api.get('/students'),
-        api.get('/groups')
-      ]);
-      setStudentCount(stuRes.data.length);
-      setGroupCount(grpRes.data.length);
-
-      // Lessons (schedules)
-      const schedRes = await api.get('/group-schedules');
-      setLessonCount(schedRes.data.length);
-
-      // Registrations and Payments
-      const [regRes, payRes] = await Promise.all([
-        api.get('/registrations'),
-        api.get('/payments')
-      ]);
-
-      // Overdue: count regs where paid < agreedPrice
-      const overdue = regRes.data.reduce((sum: number, r: any) => {
-        const paid = payRes.data
-          .filter((p: any) => p.registrationId === r.id)
-          .reduce((s: number, p: any) => s + Number(p.amount), 0);
-        return sum + (paid < r.agreedPrice ? 1 : 0);
-      }, 0);
-      setOverdueCount(overdue);
-
-      // Monthly registrations
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const regsMonthly = months.map((m, idx) => ({
-        month: m,
-        value: regRes.data.filter((r: any) => new Date(r.registrationDate).getMonth() === idx).length
-      }));
-      setMonthlyRegs(regsMonthly);
-
-      // Total revenue
-      const revenue = regRes.data.reduce((sum: number, r: any) => sum + Number(r.agreedPrice), 0);
-      setTotalRevenue(revenue);
-
-      // Recent payments
-      const recent = payRes.data
-        .sort((a: any,b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0,5);
-      setRecentPayments(recent);
+    async function loadDashboard() {
+      try {
+        const res = await api.get<{metrics: DashboardMetrics; sessions: SessionRow[]}>('/dashboard');
+        setMetrics(res.data.metrics);
+        setSessions(res.data.sessions);
+        console.log(res.data)
+      } catch (err) {
+        console.error('Error loading dashboard:', err);
+      }
     }
-    fetchData();
+    loadDashboard();
   }, []);
 
-  // Compute expected revenue: registrations × price
-  const expectedRevenue = monthlyRegs.reduce((sum, mr) => sum + mr.value, 0) * 0; // placeholder if per-reg price unknown
-
-  // Segmented bar values: paid vs expected
-  // Here using totalRevenue as paid, and overdueCount*average for expected placeholder
-  const avgRegPrice = totalRevenue / (monthlyRegs.reduce((s, m) => s + m.value, 0) || 1);
-  const expRev = monthlyRegs.reduce((s, m) => s + m.value * avgRegPrice, 0);
-  const paid   = totalRevenue;
-  const loss   = Math.max(0, expRev - paid);
-  const surplus= Math.max(0, paid - expRev);
+  if (!metrics) {
+    return <div>Chargement...</div>;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Top metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Étudiants totaux" value={studentCount} icon={User} />
-        <MetricCard title="Groupes actifs" value={groupCount} icon={Users} />
-        <MetricCard title="Leçons programmées" value={lessonCount} icon={Calendar} />
-        <MetricCard title="Inscriptions en retard" value={overdueCount} icon={AlertCircle} />
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Net Cash All Time */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow hover:shadow-md transition">
+        <div className="flex items-center">
+          <DollarSign className="mr-3 text-blue-500" />
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Caisse (total)
+            </h3>
+            <p className="mt-1 text-xl font-semibold text-gray-800 dark:text-gray-100">
+              {Number(metrics.net_cash_all_time).toFixed(3)} TND
+            </p>
+          </div>
+        </div>
       </div>
-      {/* Monthly registrations chart 
-      <ChartCard title="Inscriptions mensuelles">
-        <MonthlySalesChart data={monthlyRegs} />
-      </ChartCard>
 
-      {/* Revenue target vs collected 
-      <ChartCard title="Revenu collecté vs attendu">
-        <MonthlyTarget title="Revenu mensuel" target={expRev} achieved={paid} />
-      </ChartCard>*/}
+      {/* Student Revenue Monthly */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow hover:shadow-md transition">
+        <div className="flex items-center">
+          <TrendingUp className="mr-3 text-green-500" />
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Revenu étudiants (mois)
+            </h3>
+            <p className="mt-1 text-xl font-semibold text-gray-800 dark:text-gray-100">
+              {Number(metrics.student_paid_monthly).toFixed(3)} / {Number(metrics.student_expected_monthly).toFixed(3)} TND
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {/* Segmented payment overview */}
-      <ChartCard title="Vue d'ensemble des paiements">
-        <SegmentedBar blue={paid} yellow={expRev} red={loss} green={surplus} />
-      </ChartCard>*/
+      {/* Teacher Payments Monthly */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow hover:shadow-md transition">
+        <div className="flex items-center">
+          <AlertCircle className="mr-3 text-red-500" />
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Paiements enseignants (mois)
+            </h3>
+            <p className="mt-1 text-xl font-semibold text-gray-800 dark:text-gray-100">
+              {Number(metrics.teacher_paid_monthly).toFixed(3)} / {Number(metrics.teacher_expected_monthly).toFixed(3)} TND
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {/* Recent payments table */}
-      <DataTable
-        title="Paiements récents"
-        columns={[
-          { header: 'Date', accessor: 'date' },
-          { header: 'Montant (TND)', accessor: 'amount' },
-          { header: 'Inscription', accessor: 'registrationId' }
-        ]}
-        data={recentPayments}
-      />
+      {/* Other Costs Monthly */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow hover:shadow-md transition">
+        <div className="flex items-center">
+          <AlertCircle className="mr-3 text-yellow-500" />
+          <div>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Autres coûts (mois)
+            </h3>
+            <p className="mt-1 text-xl font-semibold text-gray-800 dark:text-gray-100">
+              {Number(metrics.cost_paid_monthly).toFixed(3)} / {Number(metrics.cost_expected_monthly).toFixed(3)} TND
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Sessions Today Table */}
+      <div className="col-span-1 md:col-span-2 lg:col-span-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+        <div className="flex items-center mb-4">
+          <Calendar className="mr-2 text-indigo-500" />
+          <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            Sessions aujourd&apos;hui
+          </h4>
+        </div>
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead>
+            <tr>
+              <th className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Type
+              </th>
+              <th className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Groupe
+              </th>
+              <th className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Enseignant
+              </th>
+              <th className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                Heure
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {sessions.length > 0 ? (
+              sessions.map((s, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{s.source}</td>
+                  <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{s.group_name}</td>
+                  <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{s.teacher_name}</td>
+                  <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{s.time}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                  Aucune séance aujourd&apos;hui
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -29,6 +29,7 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 		const sumRes = await api.get<StudentPaymentSummaryDTO>(
 			`/registrations/summary?student_id=${studentId}&group_id=${currentGroupId}`
 		);
+		console.log(sumRes.data);
 		setPaidAmount(sumRes.data.totalPaid);
 		setOutstandingAmount(sumRes.data.outstandingAmount);
 	}, [studentId, currentGroupId]);
@@ -88,14 +89,14 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 		if (isNaN(amt) || amt <= 0 || !registration) return;
 		const today = new Date().toISOString().split('T')[0];
 		await api.post('/payments', {
-			registration_id: registration.id,
+			registrationId: registration.id,
 			amount: amt,
 			date: today,
-			is_paid: true,
+			isPaid: true,
 		});
 		await api.put(`/registrations/${registration.id}`, {
-			agreed_price: group.price * (100 - discount) / 100,
-			discount_amount: discount,
+			agreedPrice: group.price * (100 - discount) / 100,
+			discountAmount: discount,
 		});
 		setShowModal(false);
 		setPayAmount('');

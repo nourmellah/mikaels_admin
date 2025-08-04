@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import InputField from '../../components/form/input/InputField';
 import Select from '../../components/form/Select';
 import DatePicker from '../../components/form/date-picker';
@@ -28,10 +30,10 @@ export interface TemplatePayload {
   notes?: string;
   startDate?: string;
 }
-
 interface Props {
   initialCost?: CostDTO;
-  onSubmit: (data: CostPayload | TemplatePayload, mode: Mode) => void;
+  // Accept any returned DTO so handlers match actual data
+  onSubmit: (data: CostDTO | any, mode: Mode) => void;
   onCancel: () => void;
 }
 
@@ -44,6 +46,7 @@ export default function CostForm({ initialCost, onSubmit, onCancel }: Props) {
   const [notes, setNotes] = useState(initialCost?.notes || '');
   const [groups, setGroups] = useState<{ id: string; name: string; }[]>([]);
   const [groupId, setGroupId] = useState(initialCost?.groupId || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
 
   // Single cost fields
@@ -61,33 +64,51 @@ export default function CostForm({ initialCost, onSubmit, onCancel }: Props) {
       .catch(err => console.error('Failed to load groups', err));
   }, []);
 
+  const validate = () => {
+    const errors: Record<string, string> = {};
+    if (!name) errors.name = 'Requis';
+    if (!amount || isNaN(amount) || amount <= 0) {
+      errors.amount = 'Requis et doit être un nombre positif';
+    }
+    return errors;
+  }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const newErrors = validate();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     if (mode === 'single') {
-      // build payload without empty dates
+      // Prepare single cost payload with explicit nullable fields
       const payload: CostPayload = {
-        ...(groupId ? { groupId } : {}),
         name,
         amount,
         paid,
-        ...(dueDate ? { dueDate } : {}),
-        ...(paidDate ? { paidDate } : {}),
-        ...(notes ? { notes } : {}),
+        groupId: groupId || undefined,
+        dueDate: dueDate || new Date().toISOString(),
+        paidDate: paid ? paidDate || new Date().toISOString() : undefined,
+        notes: notes || undefined,
       };
-      onSubmit(payload, mode);
+      const { data } = await api.post<CostDTO>('/costs', payload);
+      onSubmit(data, mode);
     } else {
+      // Prepare recurring template payload
       const payload: TemplatePayload = {
-        ...(groupId ? { groupId } : {}),
         name,
         frequency,
         amount,
-        ...(notes ? { notes } : {}),
-        ...(startDate ? { startDate } : {}),
-
+        groupId: groupId || undefined,
+        startDate: startDate || undefined,
+        notes: notes || undefined,
       };
-      onSubmit(payload, mode);
+      const { data } = await api.post('/cost-templates', payload);
+      onSubmit(data, mode);
     }
+
+    onCancel();
   };
 
   return (
@@ -112,6 +133,7 @@ export default function CostForm({ initialCost, onSubmit, onCancel }: Props) {
             value={name}
             onChange={e => setName(e.target.value)}
           />
+          {errors.name && <p className="text-red-600 text-sm">{errors.name}</p>}
 
           <Label>Montant <span className="text-red-500">*</span></Label>
           <InputField
@@ -119,7 +141,7 @@ export default function CostForm({ initialCost, onSubmit, onCancel }: Props) {
             value={amount}
             onChange={e => setAmount(Number(e.target.value))}
           />
-
+          {errors.amount && <p className="text-red-600 text-sm">{errors.amount}</p>}
           <Label>Notes</Label>
           <TextArea
             value={notes}
@@ -203,4 +225,4 @@ export default function CostForm({ initialCost, onSubmit, onCancel }: Props) {
       </ComponentCard>
     </form>
   );
-}
+};

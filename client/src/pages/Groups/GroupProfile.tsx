@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useCallback, SetStateAction } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import PageMeta from '../../components/common/PageMeta';
 import PageBreadcrumb from '../../components/common/PageBreadCrumb';
 import GroupCard from '../../components/groups/GroupCard';
@@ -17,6 +17,8 @@ import StartGroupNotice from '../../components/groups/StartGroupNotice';
 import { PaymentDTO } from '../../models/Payment';
 import { RegistrationDTO } from '../../models/Registration';
 import { GroupSessionDTO } from '../../models/GroupSession';
+import AddStudentsButton from '../../components/students/AddStudentsButton';
+import AddTeacherButton from '../../components/teachers/AddTeacherButton';
 
 // Raw view result interface
 interface RawCostSummary {
@@ -53,46 +55,61 @@ export default function GroupProfile() {
   const [sessions, setSessions] = useState<GroupSessionDTO[]>([]);
   const [rawSummary, setRawSummary] = useState<RawCostSummary | null>(null);
 
+  const navigate = useNavigate();
+
+  const refreshGroupData = useCallback(async () => {
+    try {
+      // Load group
+      const grpRes = await api.get<GroupDTO>(`/groups/${id}`);
+      const grp = grpRes.data;
+      setGroup(grp);
+
+      // Load teacher
+      if (grp.teacherId) {
+        const tRes = await api.get<TeacherDTO>(`/teachers/${grp.teacherId}`);
+        setTeacher(tRes.data);
+      }
+
+      // Load students
+      const sRes = await api.get<StudentDTO[]>('/students');
+      setStudents(sRes.data.filter(s => String(s.groupId) === id));
+
+      // Load registrations
+      const regsRes = await api.get<RegistrationDTO[]>('/registrations');
+      const groupRegs = regsRes.data.filter(r => String(r.groupId) === id);
+      setRegistrations(groupRegs);
+
+      // Load payments
+      const payRes = await api.get<PaymentDTO[]>('/payments');
+      setPayments(payRes.data.filter(p => groupRegs.some(r => r.id === p.registrationId)));
+
+      // Load sessions
+      const sessRes = await api.get<GroupSessionDTO[]>('/group-sessions');
+      setSessions(sessRes.data.filter(s => String(s.groupId) === id));
+
+      // Load cost summary from view
+      const sumRes = await api.get<RawCostSummary>(`/groups/${id}/summary`);
+      setRawSummary(sumRes.data);
+    } catch (err) {
+      console.error('Error loading group profile data:', err);
+    }
+  }, [id]);
+
+
   useEffect(() => {
-    async function fetchData() {
+    if (id) refreshGroupData();
+  }, [id, refreshGroupData]);
+
+  const handleDelete = async () => {
+    if (window.confirm("Voulez-vous vraiment supprimer cette group?")) {
       try {
-        // Load group
-        const grpRes = await api.get<GroupDTO>(`/groups/${id}`);
-        const grp = grpRes.data;
-        setGroup(grp);
-
-        // Load teacher
-        if (grp.teacherId) {
-          const tRes = await api.get<TeacherDTO>(`/teachers/${grp.teacherId}`);
-          setTeacher(tRes.data);
-        }
-
-        // Load students
-        const sRes = await api.get<StudentDTO[]>('/students');
-        setStudents(sRes.data.filter(s => String(s.groupId) === id));
-
-        // Load registrations
-        const regsRes = await api.get<RegistrationDTO[]>('/registrations');
-        const groupRegs = regsRes.data.filter(r => String(r.groupId) === id);
-        setRegistrations(groupRegs);
-
-        // Load payments
-        const payRes = await api.get<PaymentDTO[]>('/payments');
-        setPayments(payRes.data.filter(p => groupRegs.some(r => r.id === p.registrationId)));
-
-        // Load sessions
-        const sessRes = await api.get<GroupSessionDTO[]>('/group-sessions');
-        setSessions(sessRes.data.filter(s => String(s.groupId) === id));
-
-        // Load cost summary from view
-        const sumRes = await api.get<RawCostSummary>(`/groups/${id}/summary`);
-        setRawSummary(sumRes.data);
+        await api.delete(`/groups/${id}`);
+        navigate('/groups', { replace: true });
       } catch (err) {
-        console.error('Error loading group profile data:', err);
+        console.error('Erreur de suppression :', err);
       }
     }
-    if (id) fetchData();
-  }, [id]);
+  };
 
   if (!group || !rawSummary) return <div>Chargement...</div>;
 
@@ -111,26 +128,12 @@ export default function GroupProfile() {
       Number(rawSummary.general_unpaid),
   };
 
-
   const paidAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const expectedRevenue = group.price * students.length;
   const unpaidAmount = Math.max(0, expectedRevenue - paidAmount);
   const diff = expectedRevenue - summary.totalCost;
   const diffLabel = diff >= 0 ? 'Excédent' : 'Perte';
   const diffValue = Math.abs(diff);
-
-  const completedHoursCost = teacher ? teacher.salary * sessions
-    .filter(s => s.status === 'COMPLETED')
-    .reduce((sum, s) => {
-      const [h1, m1, sec1] = s.startTime.split(':').map(Number);
-      const [h2, m2, sec2] = s.endTime.split(':').map(Number);
-      return (
-        sum +
-        ((h2 * 3600 + m2 * 60 + sec2) - (h1 * 3600 + m1 * 60 + sec1)) /
-        3600
-      );
-    }, 0) * teacher.salary : 0;
-
 
   const isOver = summary.totalCost > paidAmount;
 
@@ -190,7 +193,7 @@ export default function GroupProfile() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-600 dark:text-gray-400">À ce jour</dt>
-                  <dd className="font-medium text-gray-800 dark:text-gray-100">{completedHoursCost.toFixed(3)} TND</dd>
+                  <dd className="font-medium text-gray-800 dark:text-gray-100">{summary.teacherDue.toFixed(3)} TND</dd>
                 </div>
               </dl>
             </div>
@@ -213,9 +216,8 @@ export default function GroupProfile() {
           {/* Total cost indicator */}
           <div className="flex items-center justify-between">
             <span className="text-base font-medium text-gray-800 dark:text-gray-100">Total Coûts</span>
-            <span className={`text-xl font-semibold ${
-              isOver ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-            }`}>{summary.totalCost.toFixed(3)} TND</span>
+            <span className={`text-xl font-semibold ${isOver ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+              }`}>{summary.totalCost.toFixed(3)} TND</span>
           </div>
         </ComponentCard>
 
@@ -229,11 +231,23 @@ export default function GroupProfile() {
               <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
                 Professeur
               </h4>
-              {teacher && <TeacherCard teacher={teacher} phone={teacher.phone || '–'} onUpdated={t => setTeacher(t)} />}
+              {teacher ? <TeacherCard teacher={teacher} phone={teacher.phone || '–'} onUpdated={t => setTeacher(t)} /> 
+              : <AddTeacherButton groupId={group.id} onUpdated={refreshGroupData} currentTeacherId={null} />}
             </div>
             {/* Students list */}
             <div>
-              <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">Étudiants ({students.length})</h4>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+                  Étudiants ({students.length})
+                </h4>
+                <AddStudentsButton
+                  groupId={group.id}
+                  groupPrice={group.price}
+                  onUpdated={refreshGroupData}
+                  variant="primary"
+                  size="sm"
+                />
+              </div>
               <div className="space-y-4">
                 <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
 
@@ -261,6 +275,14 @@ export default function GroupProfile() {
                 </div>
               </div>
             </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleDelete}
+              className="text-sm font-medium py-2.5 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700"
+            >
+              Supprimer le group
+            </button>
           </div>
         </ComponentCard>
       </div>

@@ -3,6 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const auth = require('./middleware/authMiddleware');
 
 const cors = require('cors');
 
@@ -27,6 +28,8 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/hello', require('./routes/hello'));
 app.use('/auth', require('./routes/auth'));
+
+app.use('/dashboard', auth, require('./routes/dashboard'));
 
 app.use('/groups', require('./routes/groups'));
 app.use('/students', require('./routes/students'));

@@ -16,8 +16,15 @@ router.get('/', async (req, res, next) => {
 // GET /registrations/summary?student_id=<>&group_id=<>
 router.get('/summary', async (req, res, next) => {
   try {
-    const { student_id: studentId, group_id: groupId } = req.query;
-    const summary = await registrationService.getStudentPaymentSummary(studentId, groupId);
+    const { student_id: studentId, group_id: groupId, reg_id: regId } = req.query;
+    let summary;
+
+    if (regId) {
+      summary = await registrationService.getRegistrationPaymentSummaryById(regId);
+    } else {
+      summary = await registrationService.getStudentPaymentSummary(studentId, groupId);
+    }
+
     if (!summary) {
       return res.status(404).json({ message: 'Payment summary not found' });
     }
@@ -41,23 +48,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /registrations
 router.post('/', async (req, res, next) => {
   try {
-    const {
-      student_id: studentId,
-      group_id: groupId,
-      agreed_price: agreedPrice,
-      deposit_pct: depositPct = 0,
-      discount_amount: discountAmount = 0.000,
-      status = 'active'
-    } = req.body;
-
-    const created = await registrationService.createRegistration({
-      studentId,
-      groupId,
-      agreedPrice,
-      depositPct,
-      discountAmount,
-      status
-    });
+    const created = await registrationService.createRegistration(req.body);
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -67,23 +58,7 @@ router.post('/', async (req, res, next) => {
 // PUT /registrations/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const {
-      student_id: studentId,
-      group_id: groupId,
-      agreed_price: agreedPrice,
-      deposit_pct: depositPct,
-      discount_amount: discountAmount,
-      status
-    } = req.body;
-
-    const updated = await registrationService.updateRegistration(req.params.id, {
-      studentId,
-      groupId,
-      agreedPrice,
-      depositPct,
-      discountAmount,
-      status
-    });
+    const updated = await registrationService.updateRegistration(req.params.id, req.body);
     if (!updated) return res.status(404).json({ message: 'Not found' });
     res.json(updated);
   } catch (err) {

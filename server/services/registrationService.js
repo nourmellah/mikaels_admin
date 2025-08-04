@@ -37,6 +37,19 @@ async function getStudentPaymentSummary(studentId, groupId) {
   return StudentPaymentSummaryDTO.fromRow(rows[0]);
 }
 
+/**
+ * Fetch the payment summary for a specific registration (by its id)
+ * directly from the student_payments_per_group view.
+ */
+async function getRegistrationPaymentSummaryById(registrationId) {
+  const { rows } = await pool.query(
+    'SELECT * FROM student_payments_per_group WHERE registration_id = $1',
+    [registrationId]
+  );
+  if (!rows[0]) return null;
+  return StudentPaymentSummaryDTO.fromRow(rows[0]);
+}
+
 
 async function getRegistrationById(id) {
   const { rows } = await pool.query(
@@ -51,9 +64,9 @@ async function createRegistration(data) {
     studentId,
     groupId,
     agreedPrice,
-    depositPct,
-    discountAmount,
-    status
+    depositPct = 0,
+    discountAmount = 0,
+    status = 'active',
   } = data;
 
   const { rows } = await pool.query(
@@ -111,6 +124,7 @@ module.exports = {
   getAllRegistrations,
   getRegistrationById,
   getStudentPaymentSummary,
+  getRegistrationPaymentSummaryById,
   createRegistration,
   updateRegistration,
   deleteRegistration

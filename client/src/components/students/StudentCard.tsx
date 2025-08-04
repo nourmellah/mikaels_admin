@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Student, StudentDTO } from '../../models/Student';
 import StudentForm, { StudentPayload } from './StudentForm';
 import api from '../../api';
 import { Modal } from '../ui/modal';
 import { useNavigate } from 'react-router-dom';
+import StudentPaymentForm from './StudentPaymentForm';
+import { StudentPaymentSummaryDTO } from '../../models/StudentPaymentSummary';
+import { GroupDTO } from '../../models/Group';
 
 interface Props {
   student: StudentDTO;
@@ -23,6 +26,31 @@ export default function StudentCard({
   registrationId,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [discount, setDiscount] = useState<number>(0);
+  const [amount, setAmount] = useState<number>(0);
+  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [outstandingAmount, setOutstandingAmount] = useState<number>(0);
+  const [group, setGroup] = useState<GroupDTO | null>(null);
+
+  useEffect(() => {
+    async function loadSummary() {
+      if (!registrationId) return;
+      try {
+        const reg = await api.get(`/registrations/${registrationId}`);
+        const grp = await api.get(`/groups/${reg.data.groupId}`);
+        const res = await api.get<StudentPaymentSummaryDTO>(`/registrations/summary?student_id=${student.id}&group_id=${reg.data.groupId}`);
+        setPaidAmount(res.data.totalPaid);
+        setOutstandingAmount(res.data.outstandingAmount);
+        setDiscount(res.data.discountAmount || 0);
+        setGroup(grp.data);
+      } catch (err) {
+        console.error('Error loading payment summary:', err);
+      }
+    }
+    loadSummary();
+  }, [registrationId, student.id]);
+
   const navigate = useNavigate();
   const model = new Student(student);
 
@@ -66,6 +94,46 @@ export default function StudentCard({
     setIsEditing(true);
   };
 
+  // Payment modal handlers
+  const handleOpenPaymentModal = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDiscount(discount || 0);
+    
+    setAmount(paymentsDue);
+    setShowPaymentModal(true);
+  };
+
+  const handleCancelPaymentModal = () => {
+    setShowPaymentModal(false);
+  };
+
+  const handleSubmitPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registrationId || !group) return;
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      await api.post('/payments', {
+        registrationId,
+        amount,
+        discount,
+        date: today,
+      });
+      await api.put(`/registrations/${registrationId}`, {
+			agreedPrice: group.price * (100 - discount) / 100,
+			discountAmount: discount,
+      });
+      setShowPaymentModal(false);
+      // reload summary
+      const res = await api.get<StudentPaymentSummaryDTO>(`/registrations/summary?reg_id=${registrationId}`);
+      setPaidAmount(res.data.totalPaid);
+      setOutstandingAmount(res.data.outstandingAmount);
+      onUpdated(student);
+    } catch (err) {
+      console.error('Error submitting payment:', err);
+    }
+  };
+
   return (
     <>
       <div
@@ -94,7 +162,7 @@ export default function StudentCard({
                 {groupName} | {model.level || '–'}
               </p>
               {registrationId && (<p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-                Paiements: {paymentsTotal.toFixed(2)} TND payés / {paymentsDue.toFixed(2)} TND restants
+                Paiements: {paymentsTotal.toFixed(2)} TND payés / {Number(outstandingAmount).toFixed(2)} TND restants
               </p>)}
             </div>
           </div>
@@ -109,10 +177,7 @@ export default function StudentCard({
           </button>
           {registrationId && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/payments/new?registration=${registrationId}`);
-              }}
+              onClick={handleOpenPaymentModal}
               className="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600"
             >
               Ajouter paiement
@@ -127,6 +192,21 @@ export default function StudentCard({
             initialData={student}
             onSubmit={handleEditSubmit}
             onCancel={() => setIsEditing(false)}
+          />
+        </Modal>
+      )}
+
+      {showPaymentModal && (
+        <Modal isOpen={showPaymentModal} onClose={handleCancelPaymentModal} className='max-w-[1400px]'>
+          <StudentPaymentForm
+            courseCost={group?.price || 0}
+            paidAmount={paidAmount}
+            discount={discount}
+            amount={amount}
+            onChangeDiscount={setDiscount}
+            onChangeAmount={setAmount}
+            onSubmit={handleSubmitPayment}
+            onCancel={handleCancelPaymentModal}
           />
         </Modal>
       )}

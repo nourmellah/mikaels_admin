@@ -76,18 +76,18 @@ export default function App() {
                 <Route index element={<WeeklyCalendarDashboard />} />
               </Route>
 
-              {/* Others Page */}
+              {/* Others Page *
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
 
-              {/* Forms */}
+              {/* Forms 
               <Route path="/form-elements" element={<FormElements />} />
 
-              {/* Tables */}
+              {/* Tables 
               <Route path="/basic-tables" element={<BasicTables />} />
 
-              {/* Ui Elements */}
+              {/* Ui Elements 
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/avatars" element={<Avatars />} />
               <Route path="/badge" element={<Badges />} />
@@ -95,9 +95,9 @@ export default function App() {
               <Route path="/images" element={<Images />} />
               <Route path="/videos" element={<Videos />} />
 
-              {/* Charts */}
+              {/* Charts *
               <Route path="/line-chart" element={<LineChart />} />
-              <Route path="/bar-chart" element={<BarChart />} />
+              <Route path="/bar-chart" element={<BarChart />} /> */ }
             </Route>
           </Route>
           {/* Auth Layout */}

@@ -41,8 +41,8 @@ export default function TeacherPayments({ teacherId }: Props) {
 
 	useEffect(() => {
 		api.get<TeacherDues[]>(`/teacher-payments/summary?teacher_id=${teacherId}`)
-			.then(res => setDues(res.data));
-	}, [teacherId]);
+			.then(res => setDues(res.data))
+	}, [dues, teacherId]);
 
 	const openModal = async (group: TeacherDues) => {
 		setSelectedGroup(group);
@@ -97,7 +97,7 @@ export default function TeacherPayments({ teacherId }: Props) {
 						</div>
 						<div className="mt-auto">
 							<p className="text-base text-gray-800 dark:text-gray-200">
-								<span className="font-bold">{d.unpaid_amount} TND</span> /
+								<span className="font-bold">{d.amount_due - d.unpaid_amount} TND</span> /
 								<span className="font-bold">{d.amount_due} TND</span>
 							</p>
 						</div>

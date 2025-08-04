@@ -67,7 +67,12 @@ export default function CostsList() {
 
   const handleTogglePaid = async (cost: CostDTO) => {
     try {
-      await api.put(`/costs/${cost.id}`, { paid: !cost.paid });
+      await api.put(`/costs/${cost.id}`, {
+        paid: !cost.paid,
+        paidDate: !cost.paid && !cost.paidDate
+          ? new Date().toISOString().slice(0, 10)
+          : cost.paidDate,
+      });
       fetchData();
     } catch (err) {
       console.error('Erreur lors du changement de statut', err);

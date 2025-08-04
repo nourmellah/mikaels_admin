@@ -29,19 +29,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /payments
 router.post('/', async (req, res, next) => {
   try {
-    const {
-      registration_id: registrationId,
-      amount,
-      date       = null,
-      is_paid    = true
-    } = req.body;
-
-    const created = await paymentService.addPayment({
-      registrationId,
-      amount,
-      date,
-      isPaid: is_paid
-    });
+  const created = await paymentService.addPayment(req.body);
 
     res.status(201).json(created);
   } catch (err) {

@@ -37,8 +37,8 @@ export default function SegmentedBar({
   showValues = true,
   height = '1.5rem',
 }: SegmentedBarProps) {
-  const valid = segments.filter(s => s.value > 0);
-  const total = valid.reduce((sum, s) => sum + s.value, 0);
+  const valid = segments.filter(s => Number(s.value) > 0);
+  const total = valid.reduce((sum, s) => sum + Number(s.value), 0);
 
   if (total === 0 || valid.length === 0) {
     return null;

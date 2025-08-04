@@ -7,12 +7,15 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { DateSelectArg, EventClickArg, EventContentArg } from '@fullcalendar/core';
 import frLocale from '@fullcalendar/core/locales/fr';
 import api from '../../api';
-import { GroupSchedule } from '../../models/GroupSchedule';
+import { GroupSchedule, GroupScheduleDTO } from '../../models/GroupSchedule';
 import { CalendarEvent } from '../../models/CalendarEvent';
 import ScheduleModal from '../../components/schedule/ScheduleModal';
 import { GroupDTO } from '../../models/Group';
 import Alert from '../../components/ui/alert/Alert';
 import { ScheduleAlert } from '../../models/ScheduleAlert';
+import { GroupSession, GroupSessionDTO } from '../../models/GroupSession';
+import React from 'react';
+import { TeacherDTO } from '../../models/Teacher';
 
 function formatLocalDate(d: Date): string {
   const Y = d.getFullYear();
@@ -32,184 +35,238 @@ function getStartOfWeek(date: Date): Date {
 export default function WeeklyCalendarDashboard() {
   const calendarRef = useRef<FullCalendar>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getStartOfWeek(new Date()));
-  const [schedules, setSchedules] = useState<GroupSchedule[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [selectedSchedule, setSelectedSchedule] = useState<GroupSchedule | null>(null);
-  const [modalOpen, setModalOpen] = useState<boolean>(false);
-  const [alerts, setAlerts] = useState<ScheduleAlert[]>([]);
-
-  const localDateStr = (d: Date) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  const [schedules, setSchedules] = useState<GroupScheduleDTO[]>([]);
+  const [sessions, setSessions] = useState<GroupSession[]>([]);
+  const [selectedSchedule, setSelectedSchedule] = useState<Partial<GroupScheduleDTO & { sessionId?: string }>>();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [groupsById, setGroupsById] = useState<Map<string, GroupDTO>>(new Map());
+  const [teachersById, setTeachersById] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     async function fetchData() {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      try {
+        const [schedRes, grpRes, tchRes, sessRes] = await Promise.all([
+          api.get('/group-schedules'),
+          api.get('/groups'),
+          api.get('/teachers'),
+          api.get('/group-sessions'),
+        ]);
 
-      const [schedRes, grpRes, tchRes, sessRes] = await Promise.all([
-        api.get('/group-schedules'),
-        api.get('/groups'),
-        api.get('/teachers'),
-        api.get('/group-sessions')
-      ]);
+        const scheds: GroupScheduleDTO[] = schedRes.data.map((j: any) =>
+          GroupSchedule.fromJson(j)
+        );
+        const sess: GroupSession[] = sessRes.data.map((j: any) =>
+          GroupSession.fromJson(j)
+        );
 
-      const schedules = schedRes.data.map((j: any) => GroupSchedule.fromJson(j));
-      setSchedules(schedules);
+        setSchedules(scheds);
+        setSessions(sess);
 
-      const groupsById = new Map(grpRes.data.map((g: any) => [g.id, g]));
-      const teachersById = new Map(tchRes.data.map((t: any) => [t.id, `${t.firstName} ${t.lastName}`]));
-      const sessions = sessRes.data;
-
-      const events: CalendarEvent[] = [];
-
-      // Existing sessions (past and future)
-      for (const ss of sessions) {
-        const group = groupsById.get(ss.groupId) as GroupDTO | undefined;
-        const teacherName = group && teachersById.get(group.teacherId) as string | undefined;
-
-        // Parse sessionDate as a full ISO string (including time if present)
-        // This preserves any UTC shift that may have occurred in the backend
-        let sessionDateObj = new Date(ss.sessionDate);
-
-        // If the backend sends sessionDate as "YYYY-MM-DD" (no time), treat as local midnight
-        // If it sends "YYYY-MM-DDTHH:mm:ss.sssZ", Date() parses as UTC
-        // To always treat as local, check if time is missing
-        if (/^\d{4}-\d{2}-\d{2}$/.test(ss.sessionDate)) {
-          // No time part, treat as local midnight
-          const [year, month, day] = ss.sessionDate.split('-').map(Number);
-          sessionDateObj = new Date(year, month - 1, day);
-        }
-
-        // Use sessionDateObj as the base date for start/end
-        const [startHour, startMinute] = ss.startTime.split(':').map(Number);
-        const [endHour, endMinute] = ss.endTime.split(':').map(Number);
-
-        const start = new Date(sessionDateObj);
-        start.setHours(startHour, startMinute, 0, 0);
-
-        const end = new Date(sessionDateObj);
-        end.setHours(endHour, endMinute, 0, 0);
-
-        console.log('Session start:', start, 'end:', end);
-
-        events.push({
-          id: `session_${ss.id}`,
-          title: group?.name || 'Cours',
-          start: start,
-          end: end,
-          extendedProps: {
-            sessionId: ss.id,
-            status: ss.status,
-            teacherName,
-            groupId: ss.groupId
-          }
-        });
+        setGroupsById(
+          new Map((grpRes.data as GroupDTO[]).map(g => [g.id, g]))
+        );
+        setTeachersById(
+          new Map((tchRes.data as TeacherDTO[]).map(t => [t.id, `${t.firstName} ${t.lastName}`]))
+        );
+      } catch (err) {
+        console.error('Calendar fetch error', err);
       }
-
-      // Recurring schedules starting today
-      for (const sched of schedules) {
-        const group = groupsById.get(sched.groupId) as GroupDTO | undefined;
-        if (!group) continue;
-        const teacherName = teachersById.get(group.teacherId) as string | undefined;
-
-        const end = new Date(group.endDate);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const current = new Date(today);
-        const offset = (sched.dayOfWeek + 7 - current.getDay()) % 7;
-        current.setDate(current.getDate() + offset);
-
-        while (current <= end) {
-          const dateStr = localDateStr(current);
-          console.log(new Date(sessions[0].sessionDate).getTime(), new Date(dateStr).getTime(), new Date().getTimezoneOffset() * 60000);
-          const exists = sessions.find((ss: any) =>
-            ss.groupId === sched.groupId &&
-            new Date(ss.sessionDate).getTime() - new Date().getTimezoneOffset() * 60000 
-              === new Date(dateStr).getTime() &&
-            ss.startTime === sched.startTime &&
-            ss.endTime === sched.endTime
-          );
-          if (!exists && sched.startTime && sched.endTime) {
-            const start = new Date(`${dateStr}T${sched.startTime}`);
-            const end = new Date(`${dateStr}T${sched.endTime}`);
-
-            if (isNaN(start.getTime()) || isNaN(end.getTime())) continue;
-
-            console.log('Schedule start:', start, 'end:', end);
-
-            events.push({
-              id: `schedule_${sched.id}_${dateStr}`,
-              title: group.name,
-              start: start,
-              end: end,
-              extendedProps: {
-                sessionId: null,
-                status: 'PENDING',
-                teacherName,
-                groupId: sched.groupId
-              }
-            });
-          }
-
-          current.setDate(current.getDate() + 7);
-        }
-      }
-
-      setEvents(events);
-
-      const alertList: ScheduleAlert[] = [];
-      for (const [gid, group] of groupsById.entries()) {
-        const groupDTO = group as GroupDTO;
-        const weekHrs = Number(groupDTO.weeklyHours);
-        const grpScheds: GroupSchedule[] = schedules.filter((s: GroupSchedule) => s.groupId === gid);
-        const totalScheduled = grpScheds.reduce((sum, s) => {
-          const [sh, sm] = s.startTime.split(':').map(Number);
-          const [eh, em] = s.endTime.split(':').map(Number);
-          return sum + ((eh * 60 + em) - (sh * 60 + sm)) / 60;
-        }, 0);
-        if (Math.abs(totalScheduled - weekHrs) > 1e-6) {
-          alertList.push({
-            groupId: String(gid),
-            groupName: groupDTO.name,
-            scheduled: Number(totalScheduled.toFixed(2)),
-            expected: weekHrs,
-          });
-        }
-      }
-      setAlerts(alertList);
     }
     fetchData();
   }, [currentWeekStart]);
 
+  const events = React.useMemo<CalendarEvent[]>(() => {
+    const evts: CalendarEvent[] = [];
+
+    // sessions
+    for (const ss of sessions) {
+      const group = groupsById.get(ss.groupId) as GroupDTO | undefined;
+      const teacherName = group && group.teacherId
+        ? teachersById.get(group.teacherId) as string
+        : undefined;
+      let dateObj = new Date(ss.sessionDate);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(ss.sessionDate)) {
+        const [y, m, d] = ss.sessionDate.split('-').map(Number);
+        dateObj = new Date(y, m - 1, d);
+      }
+      const [sh, sm] = ss.startTime.split(':').map(Number);
+      const [eh, em] = ss.endTime.split(':').map(Number);
+      const start = new Date(dateObj); start.setHours(sh, sm, 0, 0);
+      const end = new Date(dateObj); end.setHours(eh, em, 0, 0);
+      evts.push({
+        id: `session_${ss.id}`,
+        title: group?.name || 'Session',
+        start,
+        end,
+        extendedProps: { sessionId: ss.id, status: ss.status, teacherName, groupId: ss.groupId }
+      });
+    }
+
+    // schedules
+    for (const sched of schedules) {
+      const group = groupsById.get(sched.groupId) as GroupDTO | undefined;
+
+      if (!group || !group.startDate || !group.endDate) continue;
+
+      const periodStart = new Date(group.startDate);
+      const periodEnd = new Date(group.endDate);
+
+      const teacherName = group && group.teacherId
+        ? teachersById.get(group.teacherId) as string
+        : undefined;
+
+      const first = new Date(periodStart);
+      const offset = (sched.dayOfWeek + 7 - first.getDay()) % 7;
+      first.setDate(first.getDate() + offset);
+
+      const dt = new Date(first);
+      while (dt <= periodEnd) {
+        const dateStr = formatLocalDate(dt);
+
+        // skip if there’s already a session that day
+        const hasSession = sessions.some(ss =>
+          ss.groupId === sched.groupId &&
+          formatLocalDate(new Date(ss.sessionDate)) === dateStr
+        );
+        if (!hasSession) {
+          const start = new Date(dt);
+          const [startHour, startMinute] = sched.startTime.split(':').map(Number);
+          start.setHours(startHour, startMinute, 0, 0);
+          const end = new Date(dt);
+          const [endHour, endMinute] = sched.endTime.split(':').map(Number);
+          end.setHours(endHour, endMinute, 0, 0);
+
+          evts.push({
+            id: `schedule_${sched.id}_${dateStr}`,
+            title: group.name,
+            start,
+            end,
+            extendedProps: { sessionId: null, status: 'PENDING', teacherName, groupId: sched.groupId }
+          });
+        }
+
+        // jump a week
+        dt.setDate(dt.getDate() + 7);
+      }
+    }
+
+    return evts;
+  }, [sessions, schedules, groupsById, teachersById]);
+
+  const alerts = React.useMemo<ScheduleAlert[]>(() => {
+    const list: ScheduleAlert[] = [];
+
+    groupsById.forEach((group, groupId) => {
+      const expectedHrs = Number(group.weeklyHours);
+      const groupScheds = schedules.filter(s => s.groupId === groupId);
+
+      const totalHrs = groupScheds.reduce((sum, s) => {
+        const [sh, sm] = s.startTime.split(':').map(Number);
+        const [eh, em] = s.endTime.split(':').map(Number);
+        return sum + ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+      }, 0);
+      // if it deviates, emit an alert
+      if (Math.abs(totalHrs - expectedHrs) > 1e-6) {
+        list.push({
+          groupId,
+          groupName: group.name,
+          scheduled: Number(totalHrs.toFixed(2)),
+          expected: expectedHrs
+        });
+      }
+    });
+    return list;
+  }, [schedules, groupsById]);
+
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const date = selectInfo.start;
-    const day = date.getDay();
-    const startTime = date.toTimeString().substr(0, 5) + ':00';
-    const endTime = selectInfo.end.toTimeString().substr(0, 5) + ':00';
-    const newSched = new GroupSchedule({
-      id: '', groupId: '', dayOfWeek: day,
-      startTime, endTime,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      groupName: undefined,
-    });
+    const start = selectInfo.start;
+    const end = selectInfo.end;
+
+    const newSched: Partial<GroupScheduleDTO> & { date: string } = {
+      id: '',
+      groupId: '',
+      date: start.toISOString().substring(0, 10), // YYYY-MM-DD
+      dayOfWeek: start.getDay(),
+      startTime: `${start.getHours()}`.padStart(2, '0') + ':' + `${start.getMinutes()}`.padStart(2, '0'),
+      endTime: `${end.getHours()}`.padStart(2, '0') + ':' + `${end.getMinutes()}`.padStart(2, '0'),
+    };
+
     setSelectedSchedule(newSched);
     setModalOpen(true);
-    calendarRef.current?.getApi().unselect();
   };
 
-  const handleEventClick = (clickInfo: EventClickArg) => {
-    if ((clickInfo.jsEvent.target as HTMLElement).closest('.event-action-btn')) return;
-    const sched = schedules.find(s => `${s.id}_${formatLocalDate(clickInfo.event.start!)} === ${clickInfo.event.id}`);
-    if (!sched) return;
-    setSelectedSchedule(sched);
-    setModalOpen(true);
+const handleEventClick = (clickInfo: EventClickArg) => {
+  const ev    = clickInfo.event;
+  const props = ev.extendedProps as any;
+  const pad   = (n: number) => String(n).padStart(2, '0');
+
+  console.log(props.sessionId);
+
+  if (props.sessionId != null) {
+    // a real session
+    const date = ev.start!;
+    const sessionDto: GroupSessionDTO = {
+      id:          props.sessionId,
+      groupId:     props.groupId,
+      sessionDate: date.toISOString().slice(0, 10),
+      startTime:   `${pad(date.getHours())}:${pad(date.getMinutes())}:00`,
+      endTime:     `${pad(ev.end!.getHours())}:${pad(ev.end!.getMinutes())}:00`,
+      isMakeup:    props.status === 'COMPLETED' && !!props.isMakeup,
+      status:      props.status, 
+      createdAt:   '',
+      updatedAt:   ''
+    };
+    setSelectedSchedule(sessionDto);
+
+  } else {
+    // a recurring schedule
+    const date = ev.start!;
+    const scheduleId = ev.id.split('_')[1];  // e.g. "schedule_42_2025-07-14"
+    const scheduleDto: GroupScheduleDTO = {
+      id:         scheduleId,
+      groupId:    props.groupId,
+      dayOfWeek:  date.getDay(),
+      startTime:  `${pad(date.getHours())}:${pad(date.getMinutes())}:00`,
+      endTime:    `${pad(ev.end!.getHours())}:${pad(ev.end!.getMinutes())}:00`,
+      createdAt:  '',
+      updatedAt:  ''
+    };
+    setSelectedSchedule(scheduleDto);
+  }
+
+  setModalOpen(true);
+};
+
+
+  const handleSave = async (sched: GroupScheduleDTO) => {
+    const payload = { groupId: sched.groupId, dayOfWeek: sched.dayOfWeek, startTime: sched.startTime, endTime: sched.endTime };
+    if (sched.id) await api.put(`/group-schedules/${sched.id}`, payload);
+    else await api.post('/group-schedules', payload);
+    setModalOpen(false);
+    setCurrentWeekStart(getStartOfWeek(currentWeekStart));
+  };
+
+  const handleDelete = async (id: string) => {
+    await api.delete(`/group-schedules/${id}`);
+    setModalOpen(false);
+    setCurrentWeekStart(getStartOfWeek(currentWeekStart));
+    setSchedules(schedules.filter(s => s.id !== id));
+  };
+
+  const handleSaveSession = async (ss: Partial<GroupSession> & { sessionId?: string }) => {
+    const payload = { groupId: ss.groupId, sessionDate: ss.sessionDate, startTime: ss.startTime, endTime: ss.endTime, status: ss.status };
+    if (ss.sessionDate) await api.put(`/group-sessions/${ss.id}`, payload);
+    else await api.post('/group-sessions', payload);
+    setModalOpen(false);
+    setCurrentWeekStart(getStartOfWeek(currentWeekStart));
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    await api.delete(`/group-sessions/${sessionId}`);
+    setModalOpen(false);
+    setCurrentWeekStart(getStartOfWeek(currentWeekStart));
+    setSessions(sessions.filter(s => s.id !== sessionId));
   };
 
   // render event with conditional action/status
@@ -223,41 +280,35 @@ export default function WeeklyCalendarDashboard() {
       ne.stopPropagation();
       e.preventDefault();
 
-      console.log('Event start day:', info.event.startStr || 'unknown');
-      console.log('Marking session', sessionId, 'as', newStatus);
-
       const { groupId } = info.event.extendedProps;
 
       // if session exists, update; else create new one
       if (sessionId) {
-      await api.put(`/group-sessions/${sessionId}`, { status: newStatus });
+        await api.put(`/group-sessions/${sessionId}`, { status: newStatus });
       } else {
-      // Use the event's start date, but format as YYYY-MM-DD in the event's local time (not UTC)
-      const eventStart = info.event.start!;
-      const sessionDate = [
-        eventStart.getFullYear(),
-        String(eventStart.getMonth() + 1).padStart(2, '0'),
-        String(eventStart.getDate()).padStart(2, '0')
-      ].join('-');
+        // Use the event's start date, but format as YYYY-MM-DD in the event's local time (not UTC)
+        const eventStart = info.event.start!;
+        const sessionDate = [
+          eventStart.getFullYear(),
+          String(eventStart.getMonth() + 1).padStart(2, '0'),
+          String(eventStart.getDate()).padStart(2, '0')
+        ].join('-');
 
-      const startTime = eventStart.toTimeString().substr(0, 5) + ':00';
+        const startTime = eventStart.toTimeString().substr(0, 5) + ':00';
 
-      const eventEnd = info.event.end!;
-      const endTime = eventEnd.toTimeString().substr(0, 5) + ':00';
+        const eventEnd = info.event.end!;
+        const endTime = eventEnd.toTimeString().substr(0, 5) + ':00';
 
-      console.log('Creating session for date:', sessionDate, 'start:', startTime, 'end:', endTime);
 
-      await api.post('/group-sessions', {
-        groupId,
-        sessionDate,
-        startTime,
-        endTime,
-        isMakeup: false,
-        status: newStatus
-      });
+        await api.post('/group-sessions', {
+          groupId,
+          sessionDate,
+          startTime,
+          endTime,
+          isMakeup: false,
+          status: newStatus
+        });
       }
-
-      console.log('Marked session', sessionId, 'as', newStatus);
       setMenuOpen(false);
       // refresh data
       setCurrentWeekStart(getStartOfWeek(currentWeekStart));
@@ -295,41 +346,28 @@ export default function WeeklyCalendarDashboard() {
     );
   }
 
-  const handleSave = async (sched: GroupSchedule) => {
-    const payload = {
-      groupId: sched.groupId,
-      dayOfWeek: sched.dayOfWeek,
-      startTime: sched.startTime,
-      endTime: sched.endTime,
-    };
-    if (sched.id) await api.put(`/group-schedules/${sched.id}`, payload);
-    else await api.post('/group-schedules', payload);
-    setModalOpen(false);
-    setCurrentWeekStart(getStartOfWeek(currentWeekStart));
-  };
-
-  const handleDelete = async (id: string) => {
-    await api.delete(`/group-schedules/${id}`);
-    setModalOpen(false);
-    setCurrentWeekStart(getStartOfWeek(currentWeekStart));
-  };
-
   return (
     <>
       {/* schedule alerts */}
-      {alerts.map(a => (
-        <Alert
-          key={a.groupId}
-          variant="warning"
-          title={`Planning incomplet pour ${a.groupName}`}
-          message={`Heures planifiées cette semaine: ${a.scheduled}h, attendu: ${a.expected}h.`}
-        />
-      ))}
+      <div className="mb-4 space-y-1">
+        {alerts.map(a => (
+          <Alert
+            key={a.groupId}
+            variant="warning"
+            title={`Planning incomplet pour ${a.groupName}`}
+            message={`Heures planifiées cette semaine: ${a.scheduled}h, attendu: ${a.expected}h.`}
+          />
+        ))}
+      </div>
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
+          slotMinTime="07:00:00"
+          slotMaxTime="30:00:00"
+          scrollTime={"07:00:00"}
+          scrollTimeReset={false}
           locale={frLocale}
           firstDay={1}
           headerToolbar={{ left: 'prev today next', center: 'title', right: '' }}
@@ -342,14 +380,14 @@ export default function WeeklyCalendarDashboard() {
         />
       </div>
 
-      {modalOpen && selectedSchedule && (
+      {modalOpen && selectedSchedule && (<>
         <ScheduleModal
           schedule={selectedSchedule}
           onSave={handleSave}
+          onSaveSession={handleSaveSession}
           onDelete={selectedSchedule.id ? handleDelete : undefined}
-          onCancel={() => setModalOpen(false)}
-          className="max-w-[700px]"
-        />
+          onDeleteSession={selectedSchedule.id ? handleDeleteSession : undefined}
+          onCancel={() => setModalOpen(false)} /></>
       )}
     </>
   );

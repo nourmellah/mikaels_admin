@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import InputField from '../form/input/InputField';
 import Select from '../form/Select';
 import Switch from '../form/switch/Switch';
@@ -9,6 +9,7 @@ import Label from '../form/Label';
 import ComponentCard from '../common/ComponentCard';
 import api from '../../api';
 import { StudentDTO } from '../../models/Student';
+import { GroupDTO } from '../../models/Group';
 
 
 export interface StudentPayload {
@@ -22,8 +23,6 @@ export interface StudentPayload {
   imageUrl?: string | null;
 }
 
-interface Option { value: string; label: string; }
-
 interface StudentFormProps {
   initialData?: StudentDTO;
   onSubmit: (data: StudentPayload) => Promise<void>;
@@ -36,25 +35,28 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
   const [lastName, setLastName] = useState(initialData?.lastName ?? '');
   const [email, setEmail] = useState(initialData?.email ?? '');
   const [phone, setPhone] = useState(initialData?.phone ?? '');
-  const [groupId, setGroupId] = useState(initialData?.groupId ? String(initialData.groupId) : '');
   const [level, setLevel] = useState(initialData?.level ?? '');
   const [hasCv, setHasCv] = useState(initialData?.hasCv ?? false);
   const [imageUrl, setImageUrl] = useState<File | null>(null);
-  const [groups, setGroups] = useState<Option[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [previewUrl, setPreviewUrl] = useState<string>(initialData?.imageUrl ?? '');
   const [uploading, setUploading] = useState<boolean>(false);
 
+  const [groupId, setGroupId] = useState<string>('');
+  const [groupOptions, setGroupOptions] = useState<{ value: string; label: string }[]>([]);
+  const groupMapRef = useRef<Map<string, GroupDTO>>(new Map());
 
-  // load group options for dropdown
+
   useEffect(() => {
     api.get('/groups')
       .then(res => {
-        const opts: Option[] = [{ value: '', label: 'Aucun groupe' }];
-        res.data.forEach((g: any) => opts.push({ value: String(g.id), label: g.name }));
-        setGroups(opts);
+        const data: GroupDTO[] = res.data;
+        // Build map for quick lookup
+        groupMapRef.current = new Map(data.map(g => [g.id, g]));
+        // Prepare options for Select
+        setGroupOptions(data.map(g => ({ value: g.id, label: g.name })));
       })
-      .catch(() => setGroups([{ value: '', label: 'Aucun groupe' }]));
+      .catch(console.error);
   }, []);
 
   const validate = () => {
@@ -63,6 +65,13 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
     if (!lastName.trim()) errs.lastName = 'Le nom est requis.';
     if (!email.trim()) errs.email = 'Le courriel est requis.';
     return errs;
+  };
+
+  const handleGroupChange = (id: string) => {
+    setGroupId(id);
+    // Lookup full group to get its level
+    const selected = groupMapRef.current.get(id);
+    if (selected) setLevel(selected.level);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,14 +171,18 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label>Groupe</Label>
-                  <Select options={groups} onChange={setGroupId} key={groupId} defaultValue={groupId} />
+                  <Select
+                    options={[{ value: '', label: 'Sélectionner groupe' }, ...groupOptions]}
+                    defaultValue={groupId}
+                    key={groupId}
+                    onChange={handleGroupChange}
+                  />
                   {errors.groupId && <p className="text-red-600 text-sm">{errors.groupId}</p>}
                 </div>
                 <div>
                   <Label>Niveau</Label>
                   <Select
                     options={[
-                      { value: '0', label: '0' },
                       { value: 'A1', label: 'A1' },
                       { value: 'A2', label: 'A2' },
                       { value: 'B1', label: 'B1' },

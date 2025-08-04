@@ -54,7 +54,7 @@ const navItems: NavItem[] = [
     icon: <PieChartIcon />,
     name: "Couts",
     path: "/costs",
-  },
+  }/*,
   {
     name: "Forms",
     icon: <ListIcon />,
@@ -72,10 +72,10 @@ const navItems: NavItem[] = [
       { name: "Blank Page", path: "/blank", pro: false },
       { name: "404 Error", path: "/error-404", pro: false },
     ],
-  },
+  },*/
 ];
 
-const othersItems: NavItem[] = [
+const othersItems: NavItem[] = [/*
   {
     icon: <PieChartIcon />,
     name: "Charts",
@@ -103,7 +103,7 @@ const othersItems: NavItem[] = [
       { name: "Sign In", path: "/signin", pro: false },
       { name: "Sign Up", path: "/signup", pro: false },
     ],
-  },
+  },*/
 ];
 
 const AppSidebar: React.FC = () => {
@@ -303,14 +303,14 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+        className={`py-8 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-center"
           }`}
       >
         <Link to="/">
           {isExpanded || isHovered || isMobileOpen ? (
               <div className="w-full flex-shrink-0 flex flex-col items-center justify-center py-6">
                 <img src={"/images/logo/logo-mikaels.png"} alt="logo-mikaels" className="block h-12 w-auto mx-auto" />
-                <p className="text-lg text-yellow-500">Mikaels</p>
+                <span className="text-lg text-yellow-500">Mikaels</span>
               </div>
           ) : (<>
             <div className="w-full flex-shrink-0 flex flex-col items-center justify-center py-6">
@@ -345,10 +345,10 @@ const AppSidebar: React.FC = () => {
                   : "justify-start"
                   }`}
               >
-                {isExpanded || isHovered || isMobileOpen ? (
+                {(isExpanded || isHovered || isMobileOpen) && othersItems.length > 0 ? (
                   "Others"
-                ) : (
-                  <HorizontaLDots />
+                ) : othersItems.length > 0 && (
+                    <HorizontaLDots />
                 )}
               </h2>
               {renderMenuItems(othersItems, "others")}
