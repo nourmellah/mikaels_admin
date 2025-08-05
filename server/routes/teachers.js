@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const teacherService = require('../services/teacherService');
+const removeFile = require('../utils/removeFile')
 
 // GET /teachers - list all teachers
 router.get('/', async (req, res, next) => {
@@ -47,6 +48,7 @@ router.put('/:id', async (req, res, next) => {
     if (!updated) {
       return res.status(404).json({ message: 'Teacher not found' });
     }
+
     res.json(updated);
   } catch (err) {
     next(err);
@@ -56,8 +58,13 @@ router.put('/:id', async (req, res, next) => {
 // DELETE /teachers/:id - remove a teacher
 router.delete('/:id', async (req, res, next) => {
   try {
-    await teacherService.deleteTeacher(req.params.id);
-    res.status(204).end();
+    const id = req.params.id;
+    const existing = await teacherService.getTeacherById(id);
+    if (!existing) return res.sendStatus(404);
+
+    removeFile(existing.photoUrl);
+    await teacherService.deleteTeacher(id);
+    res.sendStatus(204);
   } catch (err) {
     next(err);
   }

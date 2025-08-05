@@ -29,7 +29,6 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 		const sumRes = await api.get<StudentPaymentSummaryDTO>(
 			`/registrations/summary?student_id=${studentId}&group_id=${currentGroupId}`
 		);
-		console.log(sumRes.data);
 		setPaidAmount(sumRes.data.totalPaid);
 		setOutstandingAmount(sumRes.data.outstandingAmount);
 	}, [studentId, currentGroupId]);

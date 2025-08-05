@@ -23,12 +23,12 @@ export default function AddStudentPage() {
         console.log('Creating registration for student:', student.id, 'in group:', data.groupId);
 
         await api.post('/registrations', {
-          student_id: student.id,        // ← snake_case
-          group_id: data.groupId,      // ← snake_case
-          agreed_price: agreedPrice,       // ← snake_case
-          deposit_pct: 0,                // default or data.depositPct
-          discount_amount: 0,                 // or data.discountAmount
-          registration_date: today,             // ← snake_case
+          studentId: student.id,        // ← snake_case
+          groupId: data.groupId,      // ← snake_case
+          agreedPrice,       // ← snake_case
+          depositPct: 0,                // default or data.depositPct
+          discountAmount: 0,                 // or data.discountAmount
+          registrationDate: today,             // ← snake_case
           status: 'active',
         });
       }

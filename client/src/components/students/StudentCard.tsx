@@ -77,7 +77,7 @@ export default function StudentCard({
           studentId: student.id,
           groupId: data.groupId,
           agreedPrice,
-          depositPct: 50,
+          depositPct: 0,
           discountAmount: 0,
           registrationDate: today,
           status: 'active',

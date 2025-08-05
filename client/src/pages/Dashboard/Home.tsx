@@ -30,7 +30,6 @@ export default function Home() {
         const res = await api.get<{metrics: DashboardMetrics; sessions: SessionRow[]}>('/dashboard');
         setMetrics(res.data.metrics);
         setSessions(res.data.sessions);
-        console.log(res.data)
       } catch (err) {
         console.error('Error loading dashboard:', err);
       }

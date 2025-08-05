@@ -18,6 +18,7 @@ export default function AddTeacherPage() {
   const [phone, setPhone] = useState('99 999 999');
   const [salary, setSalary] = useState('');
   const [imageUrl, setImageUrl] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
 
@@ -27,6 +28,14 @@ export default function AddTeacherPage() {
 
   const handlePhoneNumberChange = (value: string) => {
     setPhone(value);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setImageUrl(file);
+    if (file) {
+      setPreviewUrl(URL.createObjectURL(file));
+    }
   };
 
   const validate = () => {
@@ -49,13 +58,28 @@ export default function AddTeacherPage() {
     }
     setErrors({});
 
+    let uploadedUrl: string | null = null;
+    if (imageUrl) {
+      const formData = new FormData();
+      formData.append('file', imageUrl);
+
+      try {
+        // POST to your Express /upload route :contentReference[oaicite:1]{index=1}
+        const { data } = await api.post<{ url: string }>('/upload', formData);
+        uploadedUrl = data.url;
+      } catch (err) {
+        console.error('Image upload failed', err);
+        throw err;
+      }
+    }
+
     const payload = {
       firstName,
       lastName,
       email,
       phone,
       salary: Number(salary),
-      imageUrl: null // file upload not implemented
+      imageUrl: uploadedUrl
     };
 
     try {
@@ -102,7 +126,14 @@ export default function AddTeacherPage() {
                 </div>
                 <div className="md:col-span-2">
                   <Label>Photo de profil</Label>
-                  <FileInput onChange={e => setImageUrl(e.target.files && e.target.files[0] ? e.target.files[0] : null)} />
+                  <FileInput onChange={handleFileChange} />
+                  {previewUrl && (
+                    <img
+                      src={previewUrl}
+                      alt="Aperçu de l'image"
+                      className="mt-2 h-24 w-24 object-cover rounded"
+                    />
+                  )}
                 </div>
               </div>
             </ComponentCard>

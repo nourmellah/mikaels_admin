@@ -27,9 +27,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/hello', require('./routes/hello'));
-app.use('/auth', require('./routes/auth'));
+app.use('/auth', require('./routes/auth'));   
 
-app.use('/dashboard', auth, require('./routes/dashboard'));
+app.use('/dashboard', require('./routes/dashboard'));
 
 app.use('/groups', require('./routes/groups'));
 app.use('/students', require('./routes/students'));
@@ -48,6 +48,6 @@ app.use('/upload', require('./routes/upload') );
 
 app.use('/group-schedules', require('./routes/groupSchedules'));
 app.use('/group-sessions', require('./routes/groupSessions'));
-/* require('./jobs/sessionGenerator'); SESSION GENERATOR JOB */
+require('./jobs/sessionGenerator');
 
 module.exports = app;

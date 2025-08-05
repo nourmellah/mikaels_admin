@@ -155,7 +155,6 @@ export default function ScheduleModal({
   };
 
   const handleDelete = async () => {
-    console.log(schedule.sessionDate);
     if (schedule.sessionDate && schedule.id && onDeleteSession) {
       await onDeleteSession(schedule.id);
       console.log('Session deleted:', schedule.id);

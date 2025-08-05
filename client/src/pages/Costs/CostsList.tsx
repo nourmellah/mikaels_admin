@@ -82,7 +82,6 @@ export default function CostsList() {
   const getGroupName = (id?: string) => {
     if (!id) return '—';
     const grp = groups.find(g => g.id === id);
-    console.log(grp);
     return grp ? grp.name : id;
   };
 

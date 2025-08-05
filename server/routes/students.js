@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const studentService = require('../services/studentService');
+const removeFile = require('../utils/removeFile')
+
 
 // GET /students - list all students
 router.get('/', async (req, res, next) => {
@@ -26,7 +28,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /students
 router.post('/', async (req, res, next) => {
   try {
-    let { firstName, lastName, email, phone, groupId, level, hasCv } = req.body;
+    let { firstName, lastName, email, phone, groupId, level, hasCv, imageUrl } = req.body;
 
     // basic server‐side validation
     if (!firstName || !lastName || !email) {
@@ -44,8 +46,7 @@ router.post('/', async (req, res, next) => {
       groupId,
       level: level || null,
       hasCv: hasCv === true || hasCv === 'true',
-      // imageUrl stubbed for future
-      imageUrl: null
+      imageUrl: imageUrl || null
     });
 
     res.status(201).json(student);
@@ -73,7 +74,13 @@ router.put('/:id', async (req, res, next) => {
 // DELETE /students/:id - delete a student
 router.delete('/:id', async (req, res, next) => {
   try {
-    await studentService.deleteStudent(req.params.id);
+    const id = req.params.id;
+    const existing = await studentService.getStudentById(id);
+    if (!existing) return res.sendStatus(404);
+
+    removeFile(existing.photoUrl);
+
+    await studentService.deleteStudent(id);
     res.sendStatus(204);
   } catch (err) {
     next(err);

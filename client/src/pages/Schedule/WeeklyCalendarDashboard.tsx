@@ -201,8 +201,6 @@ const handleEventClick = (clickInfo: EventClickArg) => {
   const props = ev.extendedProps as any;
   const pad   = (n: number) => String(n).padStart(2, '0');
 
-  console.log(props.sessionId);
-
   if (props.sessionId != null) {
     // a real session
     const date = ev.start!;

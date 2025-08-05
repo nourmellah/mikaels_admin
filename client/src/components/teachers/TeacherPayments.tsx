@@ -23,7 +23,7 @@ interface TeacherPayment {
 	rate: number;
 	amount: number;
 	paid: boolean;
-	paid_date: string;
+	paidDate: string;
 }
 
 interface Props {
@@ -42,7 +42,7 @@ export default function TeacherPayments({ teacherId }: Props) {
 	useEffect(() => {
 		api.get<TeacherDues[]>(`/teacher-payments/summary?teacher_id=${teacherId}`)
 			.then(res => setDues(res.data))
-	}, [dues, teacherId]);
+	}, [teacherId]);
 
 	const openModal = async (group: TeacherDues) => {
 		setSelectedGroup(group);
@@ -84,6 +84,7 @@ export default function TeacherPayments({ teacherId }: Props) {
 			paid_date: paidDate,
 		});
 		await reloadData();
+		closeModal();
 	};
 
 	return (
@@ -124,7 +125,7 @@ export default function TeacherPayments({ teacherId }: Props) {
 								<ul className="max-h-40 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
 									{payments.map(p => (
 										<li key={p.id} className="py-2 flex justify-between text-sm text-gray-800 dark:text-gray-200">
-											<span>{p.paid_date}</span>
+											<span>{p.paidDate.split('T')[0]}</span>
 											<span>{p.amount} TND</span>
 										</li>
 									))}
