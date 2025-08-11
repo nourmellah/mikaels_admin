@@ -23,10 +23,10 @@ export default function SignInForm({ api, onSuccess }: SignInFormProps) {
 
     const errors: typeof validationErrors = {};
     if (!username) {
-      errors.username = 'Email is required.';
+      errors.username = 'L\'Email est requis.';
     }
     if (!password) {
-      errors.password = 'Password is required.';
+      errors.password = 'Le mot de passe est requis.';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -49,9 +49,9 @@ export default function SignInForm({ api, onSuccess }: SignInFormProps) {
         typeof (err as { response?: { status?: number } }).response === "object" &&
         (err as { response?: { status?: number } }).response?.status === 401
       ) {
-        setSubmitError('Invalid credentials, please try again.');
+        setSubmitError('Identifiants invalides, veuillez réessayer.');
       } else {
-        setSubmitError('An error occurred. Please try again later.');
+        setSubmitError('Une erreur est survenue. Veuillez réessayer plus tard.');
       }
     }
   };
@@ -62,10 +62,10 @@ export default function SignInForm({ api, onSuccess }: SignInFormProps) {
         <div>
           <div className="mb-5 sm:mb-8">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
-              Sign In
+              Connexion
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Enter your name and password to sign in!
+              Entrez votre nom et votre mot de passe pour vous connecter !
             </p>
           </div>
           <div>
@@ -75,10 +75,10 @@ export default function SignInForm({ api, onSuccess }: SignInFormProps) {
               <div className="space-y-6">
                 <div>
                   <Label>
-                    User name <span className="text-error-500">*</span>{" "}
+                    Nom d'utilisateur <span className="text-error-500">*</span>{" "}
                   </Label>
-                  <Input 
-                    placeholder="Enter your name"
+                  <Input
+                    placeholder="Entrez votre nom"
                     onChange={(e) => setUsername(e.target.value)}
                   />
                   {validationErrors.username != '' && (
@@ -88,12 +88,12 @@ export default function SignInForm({ api, onSuccess }: SignInFormProps) {
                 </div>
                 <div>
                   <Label>
-                    Password <span className="text-error-500">*</span>{" "}
+                    Mot de passe <span className="text-error-500">*</span>{" "}
                   </Label>
                   <div className="relative">
                     <Input
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder="Entrez votre mot de passe"
                       onChange={(e) => setPassword(e.target.value)}
                     />
                     <span
@@ -118,7 +118,7 @@ export default function SignInForm({ api, onSuccess }: SignInFormProps) {
                         disabled={!username || !password}
                         type="submit"
                     >
-                     Sign in
+                     Connexion
                     </Button>
                 </div>
               </div>

@@ -22,19 +22,10 @@ export default function CostsList() {
         api.get<GroupDTO[]>('/groups'),
       ]);
 
-      // Normalize groupId field (in case server returns group_id)
-      const templatesData = tmplRes.data.map(t => ({
-        ...t,
-        groupId: (t as any).groupId ?? (t as any).group_id ?? null,
-      }));
-      const costsData = costRes.data.map(c => ({
-        ...c,
-        groupId: (c as any).groupId ?? (c as any).group_id ?? null,
-      }));
-
-      setTemplates(templatesData as CostTemplateDTO[]);
-      setCosts(costsData as CostDTO[]);
+      setTemplates(tmplRes.data);
+      setCosts(costRes.data);
       setGroups(groupRes.data);
+      console.log('Fetched data', costRes.data, tmplRes.data, groupRes.data);
     } catch (err) {
       console.error('Failed to load costs/templates', err);
     }
@@ -42,7 +33,6 @@ export default function CostsList() {
 
   useEffect(() => {
     fetchData();
-
   }, []);
 
   const handleDeleteTemplate = async (id: string) => {
@@ -128,7 +118,12 @@ export default function CostsList() {
                       {t.name}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-gray-800 dark:text-gray-200 text-start capitalize">
-                      {t.frequency}
+                      {{
+                        monthly: 'Mensuel',
+                        yearly: 'Annuel',
+                        weekly: 'Hebdomadaire',
+                        daily: 'Quotidien',
+                      }[t.frequency] ?? t.frequency}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-gray-800 dark:text-gray-200 text-start">
                       {typeof t.amount === 'number' ? t.amount.toFixed(3) : t.amount}
@@ -188,7 +183,7 @@ export default function CostsList() {
                       {c.name}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-gray-800 dark:text-gray-200 text-start">
-                      {c.dueDate || '—'}
+                      {c.dueDate ? c.dueDate.split('T')[0] : '—'}
                     </TableCell>
                     <TableCell className="px-5 py-4 text-gray-800 dark:text-gray-200 text-start">
                       {typeof c.amount === 'number' ? c.amount.toFixed(3) : c.amount}
