@@ -29,7 +29,7 @@ services:
       ADMIN_USERNAME: admin          # <-- change me
       ADMIN_PASSWORD: change-me      # <-- change me
       JWT_SECRET: "generate-a-long-random-string"
-      # (any other server env you use)
+      # ...
     volumes:
       - ./server/uploads:/app/uploads   # persist uploaded files
 
@@ -49,13 +49,6 @@ services:
 * A default admin is (re)created using `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
 * Uploads are served at `http://localhost/uploads/<filename>` and persisted in `./server/uploads`.
 
-## Sanity checks
-
-```bash
-curl -i http://localhost/health       # 200 OK
-curl -i http://localhost/api/hello    # 200/304 OK
-```
-
 Then log in at `http://localhost` with the admin creds you set above.
 
 ## Troubleshooting (super short)
@@ -66,4 +59,4 @@ Then log in at `http://localhost` with the admin creds you set above.
 
 ---
 
-That’s it.
+That’s it!
