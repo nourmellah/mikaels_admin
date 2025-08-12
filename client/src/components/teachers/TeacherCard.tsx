@@ -17,9 +17,7 @@ export default function TeacherCard({ teacher, phone, onUpdated }: Props) {
   const model = new Teacher(teacher);
 
   const imageSrc = teacher.imageUrl
-    ? teacher.imageUrl.startsWith('http')
-      ? teacher.imageUrl
-      : `${api.defaults.baseURL}${teacher.imageUrl}`
+    ? teacher.imageUrl
     : undefined;
 
   const handleSubmit = async (data: TeacherPayload) => {
@@ -51,7 +49,7 @@ export default function TeacherCard({ teacher, phone, onUpdated }: Props) {
               <img
                 src={imageSrc}
                 alt={`${teacher.firstName} ${teacher.lastName}`}
-                className="h-23 w-23 rounded-full object-cover"
+                className="h-20 w-20 rounded-full object-cover"
               />
             ) : (
               <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">

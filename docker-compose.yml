@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  app:
+    build: ./server
+    container_name: app
+    env_file:
+      - ./server/.env   # if missing, fallbacks below are used
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+
+      # Fallbacks if server/.env is not present
+      ADMIN_DATABASE_URL: ${ADMIN_DATABASE_URL:-postgres://postgres@localhost:5432/postgres}
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres@localhost:5432/mikaels_database}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change}
+      REFRESH_SECRET: ${REFRESH_SECRET:-dev_refresh_secret_change}
+      ACCESS_TOKEN_EXPIRY: ${ACCESS_TOKEN_EXPIRY:-15m}
+      REFRESH_TOKEN_EXPIRY: ${REFRESH_TOKEN_EXPIRY:-7d}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "3000:3000" # API
+    # Uncomment to access Postgres from host (for debugging)
+    # ports:
+    #   - "5432:5432"
+
+  web:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: /api
+        CLIENT_SKIP_TSC: "1"   # set to "0" to typecheck in CI
+    container_name: app_web
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    environment:
+      # If your client reads this at build time; otherwise ignore
+      VITE_API_URL: "/api"
+
+volumes:
+  pgdata:

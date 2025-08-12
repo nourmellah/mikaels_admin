@@ -57,9 +57,7 @@ export default function StudentCard({
   const originalGroup = student.groupId;
 
   const imageSrc = student.imageUrl
-    ? student.imageUrl.startsWith('http')
-      ? student.imageUrl
-      : `${api.defaults.baseURL}${student.imageUrl}`
+    ? student.imageUrl
     : undefined;
 
   const handleEditSubmit = async (data: StudentPayload) => {
@@ -146,7 +144,7 @@ export default function StudentCard({
             {imageSrc ? (
               <img
                 src={imageSrc}
-                className="h-12 w-12 rounded-full object-cover"
+                className="h-20 w-20 rounded-full object-cover"
               />
             ) : (
               <span className="text-gray-500 dark:text-gray-400">{student.firstName[0]}  {student.lastName[0]}</span>

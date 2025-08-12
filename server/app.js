@@ -25,30 +25,33 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/health', (req, res) => res.json({status: 'ok'}));
+
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
-app.use('/api/hello', require('./routes/hello'));
-app.use('/auth', require('./routes/auth'));   
+app.use(['/users', '/api/users'], usersRouter);
+app.use(['/hello', '/api/hello'], require('./routes/hello'));
+app.use(['/auth', '/api/auth'], require('./routes/auth'));   
 
-app.use('/dashboard', require('./routes/dashboard'));
+app.use(['/dashboard', '/api/dashboard'], require('./routes/dashboard'));
 
-app.use('/groups', require('./routes/groups'));
-app.use('/students', require('./routes/students'));
-app.use('/teachers', require('./routes/teachers'));
+app.use(['/groups', '/api/groups'], require('./routes/groups'));
+app.use(['/students', '/api/students'], require('./routes/students'));
+app.use(['/teachers', '/api/teachers'], require('./routes/teachers'));
 
-app.use('/costs', require('./routes/costs'));
-app.use('/cost-templates/', require('./routes/costTemplates'));
+app.use(['/costs', '/api/costs'], require('./routes/costs'));
+app.use(['/cost-templates', '/api/cost-templates'], require('./routes/costTemplates'));
 require('./jobs/costsScheduler'); // Cost generation job
 
-app.use('/registrations',   require('./routes/registrations'));
-app.use('/payments',        require('./routes/payments'));
-app.use('/teacher-payments', require('./routes/teacherPayments'))
+app.use(['/registrations', '/api/registrations'], require('./routes/registrations'));
+app.use(['/payments', '/api/payments'], require('./routes/payments'));
+app.use(['/teacher-payments', '/api/teacher-payments'], require('./routes/teacherPayments'))
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/upload', require('./routes/upload') );
+app.use(['/api/uploads','/uploads'], express.static(path.join(__dirname, 'uploads')));
+app.use(['/upload', '/api/upload'], require('./routes/upload'));
 
-app.use('/group-schedules', require('./routes/groupSchedules'));
-app.use('/group-sessions', require('./routes/groupSessions'));
+app.use(['/group-schedules', '/api/group-schedules'], require('./routes/groupSchedules'));
+app.use(['/group-sessions', '/api/group-sessions'], require('./routes/groupSessions'));
+
 require('./jobs/sessionGenerator');
 
 module.exports = app;
