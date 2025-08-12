@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./bootstrap')().catch(e => { console.error(e); process.exit(1); });
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
