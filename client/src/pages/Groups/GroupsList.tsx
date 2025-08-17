@@ -4,6 +4,7 @@ import GroupCard from '../../components/groups/GroupCard';
 import api from '../../api';
 import { GroupDTO } from '../../models/Group';
 import { TeacherDTO } from '../../models/Teacher';
+import GroupCardExpanded from '../../components/groups/ExpandedGroupCard';
 
 export default function GroupsList() {
   const navigate = useNavigate();
@@ -39,15 +40,14 @@ export default function GroupsList() {
       </div>
 
       {/* Group Cards List (one per row) */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-2 gap-6">
         {groups.map(group => {
           const teacher = teachers.find(t => String(t.id) === String(group.teacherId));
           const professorName = teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Aucun professeur';
           return (
-              <GroupCard
+              <GroupCardExpanded
                 group={group}
-                professorName={professorName}
-                level={group.level}
+                teacherName={professorName}
                 onUpdated={updatedGroup => {
                   setGroups(prev => prev.map(g => (g.id === updatedGroup.id ? updatedGroup : g)));
                 }}

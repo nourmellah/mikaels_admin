@@ -59,6 +59,8 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
       .catch(console.error);
   }, []);
 
+  console.log(initialData?.imageUrl);
+
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!firstName.trim()) errs.firstName = 'Le prénom est requis.';

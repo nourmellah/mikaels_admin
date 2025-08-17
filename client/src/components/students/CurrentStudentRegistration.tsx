@@ -184,14 +184,14 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 			{showModal && (
 				<Modal isOpen onClose={() => setShowModal(false)} className="max-w-[700px]">
 					<StudentPaymentForm
-						courseCost={group.price}
-						paidAmount={paidAmount}
-						discount={discount}
-						amount={parseFloat(payAmount)}
-						onChangeDiscount={value => setDiscount(value)}
-						onChangeAmount={value => setPayAmount(value.toString())}
-						onSubmit={handlePay}
-						onCancel={() => setShowModal(false)}
+						registrationId={registration.id ?? ''}
+						agreedPrice={netPrice}
+						existingDiscount={discount}
+						totalPaidSoFar={paidAmount}
+						onSaved={() => {
+							setShowModal(false);
+							loadSummary();
+						}}
 					/>
 				</Modal>
 			)}

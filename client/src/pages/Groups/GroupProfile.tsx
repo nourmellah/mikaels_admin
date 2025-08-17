@@ -111,6 +111,13 @@ export default function GroupProfile() {
     }
   };
 
+  function handleStudentUpdate(): (s: StudentDTO) => void {
+    return s => {
+      setStudents(prev => prev.map(st => st.id === s.id ? s : st));
+      refreshGroupData();
+    };
+  }
+
   if (!group || !rawSummary) return <div>Chargement...</div>;
 
   // Calculate expected total teacher payment (hours x salary)
@@ -267,7 +274,7 @@ export default function GroupProfile() {
                         paymentsTotal={paidTotal}
                         paymentsDue={due}
                         registrationId={reg?.id}
-                        onUpdated={s => setStudents(prev => prev.map(st => st.id === s.id ? s : st))}
+                        onUpdated={handleStudentUpdate()}
                       />
                     );
                   })}

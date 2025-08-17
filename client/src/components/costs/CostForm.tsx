@@ -81,18 +81,18 @@ export default function CostForm({ initialCost, onSubmit, onCancel }: Props) {
       return;
     }
 
+    const scPayload: CostPayload = {
+      name,
+      amount,
+      paid,
+      groupId: groupId || undefined,
+      dueDate: dueDate || new Date().toISOString(),
+      paidDate: paid ? paidDate || new Date().toISOString() : undefined,
+      notes: notes || undefined,
+    };
+    const { data } = await api.post<CostDTO>('/costs', scPayload);
+
     if (mode === 'single') {
-      // Prepare single cost payload with explicit nullable fields
-      const payload: CostPayload = {
-        name,
-        amount,
-        paid,
-        groupId: groupId || undefined,
-        dueDate: dueDate || new Date().toISOString(),
-        paidDate: paid ? paidDate || new Date().toISOString() : undefined,
-        notes: notes || undefined,
-      };
-      const { data } = await api.post<CostDTO>('/costs', payload);
       onSubmit(data, mode);
     } else {
       // Prepare recurring template payload

@@ -49,7 +49,7 @@ export default function StudentCard({
       }
     }
     loadSummary();
-  }, [registrationId, student.id]);
+  }, [registrationId, student.id, ]);
 
   const navigate = useNavigate();
   const model = new Student(student);
@@ -59,6 +59,8 @@ export default function StudentCard({
   const imageSrc = student.imageUrl
     ? student.imageUrl
     : undefined;
+
+  console.log(imageSrc);  
 
   const handleEditSubmit = async (data: StudentPayload) => {
     try {
@@ -118,8 +120,8 @@ export default function StudentCard({
         date: today,
       });
       await api.put(`/registrations/${registrationId}`, {
-			agreedPrice: group.price * (100 - discount) / 100,
-			discountAmount: discount,
+        agreedPrice: group.price * (100 - discount) / 100,
+        discountAmount: discount,
       });
       setShowPaymentModal(false);
       // reload summary
@@ -160,7 +162,7 @@ export default function StudentCard({
                 {groupName} | {model.level || '–'}
               </p>
               {registrationId && (<p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-                Paiements: {paymentsTotal.toFixed(2)} TND payés / {Number(outstandingAmount).toFixed(2)} TND restants
+                Paiements: {Number(paidAmount).toFixed(2)} TND payés / {Number(outstandingAmount).toFixed(2)} TND restants
               </p>)}
             </div>
           </div>
@@ -195,16 +197,16 @@ export default function StudentCard({
       )}
 
       {showPaymentModal && (
-        <Modal isOpen={showPaymentModal} onClose={handleCancelPaymentModal} className='max-w-[1400px]'>
+        <Modal isOpen={showPaymentModal} onClose={handleCancelPaymentModal} className='max-w-[700px]'>
           <StudentPaymentForm
-            courseCost={group?.price || 0}
-            paidAmount={paidAmount}
-            discount={discount}
-            amount={amount}
-            onChangeDiscount={setDiscount}
-            onChangeAmount={setAmount}
-            onSubmit={handleSubmitPayment}
-            onCancel={handleCancelPaymentModal}
+            registrationId={registrationId?? ''}
+            agreedPrice={(group?.price ?? 0) * (100 - discount) / 100}
+            existingDiscount={discount}
+            totalPaidSoFar={paidAmount}
+            onSaved={() => {
+              setShowPaymentModal(false);
+              // Reload summary or perform any other actions
+            }}
           />
         </Modal>
       )}
