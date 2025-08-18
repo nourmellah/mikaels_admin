@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../api";
-import { Modal } from "../ui/modal"; 
+import { Modal } from "../ui/modal";
 
 type WalletTxn = {
   id: string;
@@ -19,7 +19,7 @@ type WalletPayload = {
 type Props = {
   studentId: string;
   className?: string;
-	refreshKey?: number;
+  refreshKey?: number;
 };
 
 function currency(n: number | undefined | null) {

@@ -132,6 +132,14 @@ async function depositToWallet(studentId, amount, note) {
       [studentId]
     );
 
+    // Update the wallet balance
+    await client.query(
+      `UPDATE student_wallets
+       SET balance = balance + $2
+       WHERE student_id = $1`,
+      [studentId, amount]
+    );
+
     const { rows } = await client.query(
       `INSERT INTO student_wallet_transactions (student_id, amount, kind, note)
        VALUES ($1, $2, 'DEPOSIT', $3)
