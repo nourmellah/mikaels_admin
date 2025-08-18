@@ -8,6 +8,7 @@ import api from '../../api';
 import { StudentDTO } from '../../models/Student';
 import { GroupNameDTO } from '../../models/Group';
 import CurrentStudentRegistration from '../../components/students/CurrentStudentRegistration';
+import StudentWalletCard from '../../components/students/StudentWalletCard';
 
 export default function StudentProfile() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,10 @@ export default function StudentProfile() {
   const [groups, setGroups] = useState<GroupNameDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+
+  const [walletRefreshKey, setWalletRefreshKey] = useState(0);
+  const bumpWallet = () => setWalletRefreshKey(k => k + 1);
+
 
   useEffect(() => {
     async function fetchData() {
@@ -69,9 +74,10 @@ export default function StudentProfile() {
           groupName={groupName}
           onUpdated={handleUpdate}
         />
-        { group && (
-          <CurrentStudentRegistration studentId={student.id} currentGroupId={group.id} />
-        ) }
+        <StudentWalletCard studentId={student.id} refreshKey={walletRefreshKey}/>
+        {group && (
+          <CurrentStudentRegistration studentId={student.id} currentGroupId={group.id} onUpdate={bumpWallet} />
+        )}
         <StudentInfo student={student} groupName={groupName} />
         <div className="flex justify-end">
           <button

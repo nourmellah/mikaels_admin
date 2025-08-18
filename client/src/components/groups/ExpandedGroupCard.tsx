@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../../api';
 import GroupForm from './GroupForm';
 import { Modal } from '../ui/modal';
@@ -66,6 +66,7 @@ export type ExpandedGroupCardProps = {
   currency?: string; // ex: 'TND'
   className?: string;
   onUpdated?: (updated: GroupDTO) => void; // notifie la liste parente
+  onProfitReady?: (profit: number | null) => void;
 };
 
 // ===================== Helpers =====================
@@ -113,6 +114,7 @@ export default function ExpandedGroupCard({
   currency = 'TND',
   className,
   onUpdated,
+  onProfitReady
 }: ExpandedGroupCardProps) {
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -131,6 +133,7 @@ export default function ExpandedGroupCard({
   const [regSummaries, setRegSummaries] = useState<Record<string, RegistrationSummary | null>>({});
   const [loadingRegs, setLoadingRegs] = useState(false);
   const [regsError, setRegsError] = useState<string | null>(null);
+
   const navigate = useNavigate()
 
   // -------- Fetch group summary (costs) --------
@@ -315,9 +318,22 @@ export default function ExpandedGroupCard({
       ? 'text-emerald-600 dark:text-emerald-400'
       : 'text-rose-600 dark:text-rose-400';
 
-  // ===================== Render =====================
+  const rawProfit = (metrics as any)?.profit;
+
+  const profit = useMemo(() => {
+    if (typeof rawProfit === "number" && Number.isFinite(rawProfit)) return rawProfit;
+    if (typeof rawProfit === "string") {
+      const n = parseFloat(rawProfit);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }, [rawProfit]);
+
+  const orderValue = profit == null ? 9_999_999 : Math.round(profit * 100);
+
   return (
     <div
+      style={{ order: orderValue }} data-profit={profit ?? "unknown"}
       onClick={onCardClick}
       className={[
         'relative',

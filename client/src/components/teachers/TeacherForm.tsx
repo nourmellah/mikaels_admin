@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import InputField from '../../components/form/input/InputField';
 import PhoneInput from '../../components/form/group-input/PhoneInput';
 import FileInput from '../../components/form/input/FileInput';
@@ -39,6 +39,14 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
   const [uploading, setUploading] = useState(false);
 
   const countries = [{ code: 'TN', label: '+216' }];
+
+  const imageSrc = useMemo(() => {
+      const url = initialData?.imageUrl;
+      if (!url) return null;
+  
+      const base = import.meta.env.VITE_API_PUBLIC_BASE || "http://localhost:3000";
+      return base ? `${base}${url}` : url;
+    }, [initialData?.imageUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -86,7 +94,6 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
         setUploading(false);
       }
     }
-
 
     await onSubmit({
       firstName,
@@ -146,12 +153,12 @@ export default function TeacherForm({ initialData, onSubmit, onCancel }: Teacher
               <div className="sm:col-span-2">
                 <Label>Photo de profil</Label>
                 <FileInput onChange={handleFileChange} />
-                {previewUrl && (
-                  <img
-                    src={previewUrl}
-                    alt="Aperçu de l'image"
-                    className="mt-2 h-24 w-24 object-cover rounded"
-                  />
+                {imageSrc ? (
+                  <img src={imageSrc} alt="Aperçu" className="mt-2 h-24 w-24 object-cover rounded" loading="lazy" />
+                ) : (
+                  previewUrl && (
+                    <img src={previewUrl} alt="Aperçu" className="mt-2 h-24 w-24 object-cover rounded" loading="lazy" />
+                  )
                 )}
                 {uploading && <p>Uploading…</p>}
               </div>

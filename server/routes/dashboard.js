@@ -1,14 +1,19 @@
 const express = require('express');
 const router  = express.Router();
-const pool    = require('../db');
+const dashboardServices = require('../services/dashboardServices');
 
 router.get('/', async (req, res, next) => {
-  const metrics = await pool.query('SELECT * FROM dashboard_metrics;');
-  const sessions = await pool.query('SELECT * FROM dashboard_sessions_today;');
-  res.json({
-    metrics: metrics.rows[0],
-    sessions: sessions.rows
-  });
+  try {
+    const payload = await dashboardServices.getDashboardOverview();
+    res.json(payload);
+  } catch (err) { next(err); }
+});
+
+router.get('/timeseries', async (req, res, next) => {
+  try {
+    const data = await dashboardServices.getDashboardTimeseries();
+    res.json({ data });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

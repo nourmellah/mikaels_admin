@@ -1,208 +1,277 @@
-// src/components/payments/StudentPaymentForm.tsx
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../api';
 import { SliderWithInput } from '../form/SliderWithInput';
 
 type Props = {
-	registrationId: string;
-	agreedPrice: number;          // registration.agreed_price
-	existingDiscount: number;     // registration.discount_amount (overall)
-	totalPaidSoFar: number;       // sum of paid payments for this registration
-	onSaved?: () => void;
+  registrationId: string;
+  agreedPrice: number;          // registration.agreed_price
+  existingDiscount: number;     // registration.discount_amount (overall)
+  totalPaidSoFar: number;       // sum of paid payments for this registration
+  onSaved?: () => void;
+
+  /** Required for wallet apply */
+  studentId: string;
 };
 
 type DiscountMode = 'amount' | 'percent';
 
+/** Round to 3 decimals for money display */
 function round3(n: number) {
-	return Math.max(0, Math.round(n * 1000) / 1000);
+  return Math.round((n + Number.EPSILON) * 1000) / 1000;
 }
+
+/** Clamp helper */
 function clamp(n: number, min: number, max: number) {
-	return Math.min(max, Math.max(min, n));
-}
-function pct(n: number) {
-	return Math.round(n * 100) / 100;
+  return Math.max(min, Math.min(max, n));
 }
 
 export default function StudentPaymentForm({
-	registrationId,
-	agreedPrice,
-	existingDiscount,
-	totalPaidSoFar,
-	onSaved
+  registrationId,
+  agreedPrice,
+  existingDiscount,
+  totalPaidSoFar,
+  onSaved,
+  studentId,
 }: Props) {
-	// The discount is the **overall** discount to store on the registration.
-	// Initialize to the existing saved discount.
-	const [discountMode, setDiscountMode] = React.useState<DiscountMode>('amount');
-	const [discountInput, setDiscountInput] = React.useState<string>(String(existingDiscount ?? 0));
-	const [paymentInput, setPaymentInput] = React.useState<string>(''); // amount for this new payment
+  // ---------- Discount state ----------
+  // Keep percentage UI; persist as amount on save
+  const [discountMode] = useState<DiscountMode>('percent'); // reserved for future
+  const [discountPct, setDiscountPct] = useState<number>(() => {
+    const pct = agreedPrice > 0 ? (existingDiscount / agreedPrice) * 100 : 0;
+    return clamp(pct, 0, 100);
+  });
 
-	// Derived numbers (live)
-	const price = Number(agreedPrice) || 0;
-	const paid = Number(totalPaidSoFar) || 0;
+  // Compute discount amount from percentage
+  const discountAmount = useMemo(() => {
+    const amt = (agreedPrice * discountPct) / 100;
+    return round3(clamp(amt, 0, agreedPrice));
+  }, [agreedPrice, discountPct]);
 
-	// Max discount amount is what’s left unpaid right now.
-	const maxDiscountAmount = React.useMemo(() => round3(Math.max(0, price - paid)), [price, paid]);
-	const maxDiscountPercent = price > 0 ? round3((maxDiscountAmount / price) * 100) : 0;
+  // ---------- Outstanding & payment ----------
+  const outstandingBefore = useMemo(() => {
+    // outstanding = agreed - discount - already paid
+    const out = agreedPrice - discountAmount - totalPaidSoFar;
+    return round3(Math.max(0, out));
+  }, [agreedPrice, discountAmount, totalPaidSoFar]);
 
-	// Compute the **overall** discount amount based on mode + input, then clamp to allowed max
-	const rawDiscount = React.useMemo(() => {
-		const val = Number(discountInput) || 0;
-		if (discountMode === 'percent') {
-			return round3((price * val) / 100);
-		}
-		return round3(val);
-	}, [discountInput, discountMode, price]);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
 
-	const discountAmount = clamp(rawDiscount, 0, maxDiscountAmount);
-	const discountPercent = price > 0 ? round3((discountAmount / price) * 100) : 0;
+  // Clamp payment to outstanding
+  const paymentClampedPreview = useMemo(
+    () => round3(clamp(paymentAmount, 0, outstandingBefore)),
+    [paymentAmount, outstandingBefore]
+  );
 
-	// Outstanding before the new payment
-	const outstanding = React.useMemo(
-		() => round3(Math.max(0, price - discountAmount - paid)),
-		[price, discountAmount, paid]
-	);
+  useEffect(() => {
+    if (paymentAmount > outstandingBefore) {
+      setPaymentAmount(outstandingBefore);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outstandingBefore]);
 
-	// Max payment is exactly the outstanding (cannot overpay)
-	const maxPayment = outstanding;
+  // ---------- Wallet (credit) ----------
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [walletLoading, setWalletLoading] = useState<boolean>(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [apiUnavailable, setApiUnavailable] = useState<boolean>(false);
 
-	// Live clamp the payment input display (we only clamp on submit, but show helper)
-	const paymentVal = Number(paymentInput) || 0;
-	const paymentClampedPreview = clamp(round3(paymentVal), 0, maxPayment);
+  // Fetch wallet balance (required to pay)
+  useEffect(() => {
+    let ignore = false;
+    async function loadWallet() {
+      setWalletLoading(true);
+      setWalletError(null);
+      setApiUnavailable(false);
+      try {
+        const res = await api.get(`/students/${studentId}/wallet`, { params: { limit: 1 } });
+        if (!ignore) setWalletBalance(Number(res.data?.balance ?? 0));
+      } catch (err: any) {
+        // When wallet API is missing/unmounted, we must block payment (credit-only policy)
+        if (!ignore) {
+          setApiUnavailable(true);
+          setWalletBalance(0);
+        }
+      } finally {
+        if (!ignore) setWalletLoading(false);
+      }
+    }
+    if (studentId) loadWallet();
+    return () => { ignore = true; };
+  }, [studentId]);
 
-	/* Helper text at the top (live-updating)
-		const topText = React.useMemo(() => {
-			const paidPct = price > 0 ? pct((paid / price) * 100) : 0;
-			const discPct = price > 0 ? pct((discountAmount / price) * 100) : 0;
-			return [
-				`Prix: ${price.toFixed(3)} TND`,
-				`Payé: ${round3(paid).toFixed(3)} TND (${paidPct}%)`,
-				`Remise: ${round3(discountAmount).toFixed(3)} TND (${discPct}%)`,
-				`Reste: ${outstanding.toFixed(3)} TND`,
-				`Remise max possible: ${maxDiscountAmount.toFixed(3)} TND (${maxDiscountPercent}%)`,
-				`Paiement max: ${maxPayment.toFixed(3)} TND`,
-			].join(' • ');
-		}, [price, paid, discountAmount, outstanding, maxDiscountAmount, maxDiscountPercent]);*/
+  // Convenience: set payment to max usable from wallet or outstanding
+  function setMaxFromWallet() {
+    const base = Math.min(walletBalance, outstandingBefore);
+    if (base > 0) setPaymentAmount(round3(base));
+  }
 
-	// Handlers
-	const onChangeDiscountMode = (m: DiscountMode) => setDiscountMode(m);
-	const onChangeDiscountInput = (v: string) => setDiscountInput(v.replace(',', '.'));
-	const onChangePaymentInput = (v: string) => setPaymentInput(v.replace(',', '.'));
-	
-	// Submit:
-	// 1) Patch registration with the **overall** discountAmount (clamped)
-	// 2) If payment > 0, post the payment with amount = clamped value
-	const handleSave = async () => {
-		const discountToSave = discountAmount;
-		const paymentToSave = paymentClampedPreview;
+  // ---------- Submit (wallet required) ----------
+  // 1) Update registration discount
+  // 2) Apply credit via /students/:id/wallet/apply
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWalletError(null);
 
-		const today = new Date().toISOString();
+    const paymentToSave = paymentClampedPreview;
 
-		try {
-			// Update registration’s overall discount (not per-payment)
-			await api.put(`/registrations/${registrationId}`, {
-				discountAmount: discountToSave,
-				agreedPrice: maxPayment,
-			});
+    // Basic validation
+    if (apiUnavailable) {
+      setWalletError("Le portefeuille est indisponible. Veuillez réessayer plus tard.");
+      return;
+    }
+    if (walletLoading) {
+      setWalletError("Le solde du portefeuille est en cours de chargement…");
+      return;
+    }
+    if (!Number.isFinite(paymentToSave) || paymentToSave <= 0) {
+      setWalletError('Montant invalide.');
+      return;
+    }
+    if (walletBalance <= 0) {
+      setWalletError("Aucun crédit disponible dans le portefeuille.");
+      return;
+    }
+    if (paymentToSave > walletBalance) {
+      setWalletError("Crédit insuffisant pour ce paiement.");
+      return;
+    }
 
-			// Then save payment if any
-			if (paymentToSave > 0) {
-				await api.post('/payments', {
-					registrationId,
-					amount: paymentToSave,
-					discount: discountToSave,
-					date: today,
-				});
-			}
+    // Update registration discount first
+    try {
+      await api.put(`/registrations/${registrationId}`, {
+        discountAmount,  // overall discount (amount)
+        agreedPrice,     // keep server in sync if it expects it
+      });
+    } catch (err: any) {
+      setWalletError(err?.response?.data?.message || "Échec de la mise à jour de la remise.");
+      return;
+    }
 
-			onSaved?.();
-		} catch (e) {
-			// handle UI error as you prefer
-			console.error(e);
-		}
-	};
+    // Apply wallet credit (single source of truth)
+    try {
+      // NOTE: the server should record the payment internally and set the correct date server-side.
+      await api.post(`/students/${studentId}/wallet/apply`, {
+        registrationId,
+        amount: paymentToSave,
+        note: 'Paiement via portefeuille',
+        date: new Date().toISOString()
+      });
 
-	return (
-		<form
-			onSubmit={(e) => {
-				e.preventDefault();
-				handleSave?.(); // keep your existing save logic
-			}}
-			className="space-y-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6"
-		>
-			<h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-				Enregistrer un paiement
-			</h4>
+      // Refresh wallet balance after applying
+      try {
+        const res = await api.get(`/students/${studentId}/wallet`, { params: { limit: 1 } });
+        setWalletBalance(Number(res.data?.balance ?? 0));
+      } catch {
+      }
+    } catch (err: any) {
+      setWalletError(err?.response?.data?.message || "Échec d’application du crédit.");
+      return;
+    }
 
-			{/* Discount mode toggle */}
-			<div className="flex items-center justify-between">
-				<span className="text-xs text-gray-500 dark:text-gray-400">Mode de remise</span>
-				<label className="inline-flex items-center gap-2 text-sm">
-					<input
-						type="checkbox"
-						checked={discountMode === 'percent'}
-						onChange={(e) => setDiscountMode(e.target.checked ? 'percent' : 'amount')}
-					/>
-					<span>{discountMode === 'percent' ? 'Pourcentage (%)' : 'Montant (TND)'}</span>
-				</label>
-			</div>
+    // Reset local state and notify
+    setPaymentAmount(0);
+    if (onSaved) onSaved();
+  };
 
-			{/* Discount slider */}
-			<div>
-				<label className="block mb-1 text-xs text-gray-500 dark:text-gray-400">
-					Remise :{' '}
-					<span className="font-medium">
-						{discountMode === 'percent'
-							? `${discountPercent}% (${discountAmount.toFixed(3)} TND)`
-							: `${discountAmount.toFixed(3)} TND (${discountPercent}%)`}
-					</span>
-				</label>
-				<SliderWithInput
-					label={discountMode === 'percent' ? 'Remise %' : 'Remise (TND)'}
-					min={0}
-					max={discountMode === 'percent' ? 100 : maxDiscountAmount}
-					step={1}
-					value={discountMode === 'percent' ? discountPercent : discountAmount}
-					onChange={(v) => onChangeDiscountInput(String(v))}
-				/>
-			</div>
+  return (
+    <form
+      onSubmit={handleSave}
+      className="space-y-6 p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6"
+    >
+      <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+        Enregistrer un paiement
+      </h4>
 
-			{/* Money slider */}
-			<div>
-				<label className="block mb-1 text-xs text-gray-500 dark:text-gray-400">
-					Montant :{' '}
-					<span className="font-medium">
-						{paymentClampedPreview.toFixed(3)} TND / {outstanding.toFixed(3)} TND
-					</span>
-				</label>
-				<SliderWithInput
-					label="Montant"
-					min={0}
-					max={maxPayment}
-					step={1}
-					value={paymentClampedPreview}
-					onChange={(v) => onChangePaymentInput(String(v))}
-				/>
-			</div>
+      {/* Wallet credit banner (credit is mandatory) */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3.5">
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-gray-700 dark:text-gray-400">
+            Crédit disponible (paiement uniquement via portefeuille)
+          </div>
+          <div className="text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
+            {walletLoading ? '…' : `${walletBalance.toFixed(3)} TND`}
+          </div>
+        </div>
+        {apiUnavailable && (
+          <p className="mt-2 text-xs text-amber-600">
+            API Portefeuille indisponible pour le moment.
+          </p>
+        )}
+      </div>
 
-			{/* Actions */}
-			<div className="flex justify-end gap-2">
-				<button
-					type="button"
-					onClick={() => onSaved?.()}
-					className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded"
-				>
-					Annuler
-				</button>
-				<button
-					type="submit"
-					className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
-					disabled={paymentClampedPreview <= 0}
-				>
-					Valider
-				</button>
-			</div>
-		</form>
-	);
+      {/* Outstanding helper */}
+      <div className="text-xs text-gray-600 dark:text-gray-400">
+        Montant restant à payer&nbsp;:{' '}
+        <span className="font-medium text-gray-900 dark:text-white">
+          {outstandingBefore.toFixed(3)} TND
+        </span>
+      </div>
 
+      {/* Discount slider (percentage) */}
+      <div>
+        <label className="block mb-1 text-xs text-gray-500 dark:text-gray-400">
+          Remise&nbsp;: <span className="font-medium">{round3(discountPct)}%</span>{' '}
+          <span className="text-gray-400">({discountAmount.toFixed(3)} TND)</span>
+        </label>
+        <SliderWithInput
+          label="Remise %"
+          min={0}
+          max={100}
+          value={discountPct}
+          onChange={(v: number) => setDiscountPct(clamp(v, 0, 100))}
+        />
+      </div>
+
+      {/* Payment amount slider */}
+      <div>
+        <label className="block mb-1 text-xs text-gray-500 dark:text-gray-400">
+          Montant du paiement&nbsp;:{' '}
+          <span className="font-medium">{paymentClampedPreview.toFixed(3)} TND</span>
+        </label>
+        <SliderWithInput
+          label="Montant"
+          min={0}
+          max={Math.max(0, outstandingBefore)}
+          value={paymentAmount}
+          step={1}
+          onChange={(v: number) => setPaymentAmount(v)}
+        />
+
+        {/* Quick-fill from wallet */}
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={setMaxFromWallet}
+            className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-medium border border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-300 dark:hover:bg-blue-950/30"
+            title="Utiliser le maximum du portefeuille"
+            disabled={apiUnavailable || walletBalance <= 0 || outstandingBefore <= 0}
+          >
+            Max portefeuille
+          </button>
+        </div>
+      </div>
+
+      {/* Inline errors */}
+      {walletError && (
+        <p className="text-sm text-rose-600">{walletError}</p>
+      )}
+
+      {/* Footer (single submit; wallet required) */}
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="submit"
+          className="px-4 py-2 rounded text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+          disabled={
+            apiUnavailable ||
+            walletLoading ||
+            paymentClampedPreview <= 0 ||
+            walletBalance <= 0
+          }
+          title="Appliquer le crédit du portefeuille"
+        >
+          Appliquer le crédit
+        </button>
+      </div>
+    </form>
+  );
 }
-

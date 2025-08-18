@@ -12,6 +12,21 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET /groups/active - list groups active per month
+router.get('/active', async (req, res, next) => {
+  try {
+    const { month } = req.query; // optional: YYYY-MM or any date string
+    const data = await groupService.getActiveGroupsByMonth(month);
+    if (month && !data) {
+      return res.status(404).json({ message: 'No data for the requested month' });
+    }
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+
 // GET /groups/:id - get a single group by ID
 router.get('/:id', async (req, res, next) => {
   try {

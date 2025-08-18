@@ -12,9 +12,10 @@ import { StudentPaymentSummaryDTO } from '../../models/StudentPaymentSummary';
 interface Props {
 	studentId: string;
 	currentGroupId: string | null;
+	onUpdate?: () => void;
 }
 
-export default function CurrentStudentRegistration({ studentId, currentGroupId }: Props) {
+export default function CurrentStudentRegistration({ studentId, currentGroupId, onUpdate }: Props) {
 	const [registration, setRegistration] = useState<RegistrationDTO | null>(null);
 	const [group, setGroup] = useState<GroupDTO | null>(null);
 	const [payments, setPayments] = useState<PaymentDTO[]>([]);
@@ -184,6 +185,7 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 			{showModal && (
 				<Modal isOpen onClose={() => setShowModal(false)} className="max-w-[700px]">
 					<StudentPaymentForm
+						studentId={studentId}
 						registrationId={registration.id ?? ''}
 						agreedPrice={netPrice}
 						existingDiscount={discount}
@@ -191,6 +193,8 @@ export default function CurrentStudentRegistration({ studentId, currentGroupId }
 						onSaved={() => {
 							setShowModal(false);
 							loadSummary();
+							onUpdate?.();
+							console.log("Wallet updated");
 						}}
 					/>
 				</Modal>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Teacher, TeacherDTO } from '../../models/Teacher';
 import TeacherForm, { TeacherPayload } from './TeacherForm';
@@ -16,9 +16,13 @@ export default function TeacherCard({ teacher, phone, onUpdated }: Props) {
   const navigate = useNavigate();
   const model = new Teacher(teacher);
 
-  const imageSrc = teacher.imageUrl
-    ? teacher.imageUrl
-    : undefined;
+  const imageSrc = useMemo(() => {
+    const url = teacher?.imageUrl;
+    if (!url) return null;
+
+    const base = import.meta.env.VITE_API_PUBLIC_BASE || "http://localhost:3000";
+    return base ? `${base}${url}` : url;
+  }, [teacher?.imageUrl]);
 
   const handleSubmit = async (data: TeacherPayload) => {
     try {
@@ -48,12 +52,13 @@ export default function TeacherCard({ teacher, phone, onUpdated }: Props) {
             {imageSrc ? (
               <img
                 src={imageSrc}
-                alt={`${teacher.firstName} ${teacher.lastName}`}
-                className="h-20 w-20 rounded-full object-cover"
+                alt={`${teacher?.firstName[0] ?? ""} ${teacher?.lastName[0] ?? ""}`}
+                className="h-21 w-21 rounded-full object-cover"
+                loading="lazy"
               />
             ) : (
               <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-500 dark:text-gray-400">{teacher.firstName[0]}  {teacher.lastName[0]}</span>
+                <span className="text-gray-500 dark:text-gray-400">{teacher.firstName[0]}  {teacher.lastName[0]}</span>
               </div>
             )}
           </div>

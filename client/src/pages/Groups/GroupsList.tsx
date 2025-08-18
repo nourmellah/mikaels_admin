@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import GroupCard from '../../components/groups/GroupCard';
 import api from '../../api';
 import { GroupDTO } from '../../models/Group';
 import { TeacherDTO } from '../../models/Teacher';
@@ -10,6 +9,7 @@ export default function GroupsList() {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<GroupDTO[]>([]);
   const [teachers, setTeachers] = useState<TeacherDTO[]>([]);
+  const [profitMap, setProfitMap] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     async function fetchData() {
@@ -40,18 +40,18 @@ export default function GroupsList() {
       </div>
 
       {/* Group Cards List (one per row) */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="flex flex-col grid grid-cols-2 gap-6">
         {groups.map(group => {
           const teacher = teachers.find(t => String(t.id) === String(group.teacherId));
           const professorName = teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Aucun professeur';
           return (
-              <GroupCardExpanded
-                group={group}
-                teacherName={professorName}
-                onUpdated={updatedGroup => {
-                  setGroups(prev => prev.map(g => (g.id === updatedGroup.id ? updatedGroup : g)));
-                }}
-              />
+            <GroupCardExpanded
+              group={group}
+              teacherName={professorName}
+              onUpdated={updatedGroup => {
+                setGroups(prev => prev.map(g => (g.id === updatedGroup.id ? updatedGroup : g)));
+              }}
+            />
           );
         })}
       </div>

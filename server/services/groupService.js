@@ -70,11 +70,45 @@ function mapToColumn(field) {
   return map[field] || field;
 }
 
+async function getActiveGroupsByMonth(month) {
+  // Accept ?month=YYYY-MM or any parseable date; normalize to first-of-month
+  let paramDate = null;
+  if (month) paramDate = /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : month;
+
+  const where =
+    paramDate ? "WHERE gam.month_start = date_trunc('month', $1::date)::date" : "";
+
+  const { rows } = await pool.query(
+    `
+    WITH gam AS (
+      SELECT month_start, group_id
+      FROM group_active_months
+      ${where}
+    )
+    SELECT
+      gam.month_start,
+      json_agg(
+        json_build_object('id', g.id, 'name', g.name)
+        ORDER BY g.name
+      ) AS groups
+    FROM gam
+    JOIN groups g ON g.id = gam.group_id
+    GROUP BY gam.month_start
+    ORDER BY gam.month_start;
+    `,
+    paramDate ? [paramDate] : []
+  );
+
+  // If a single month was requested, return one object (or null)
+  return month ? (rows[0] || null) : rows;
+}
+
 module.exports = {
   getAllGroups,
   getGroupById,
   getGroupCostSummary,
   createGroup,
   updateGroup,
-  deleteGroup
+  deleteGroup,
+  getActiveGroupsByMonth
 };

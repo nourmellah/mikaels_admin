@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Student, StudentDTO } from '../../models/Student';
 import StudentForm, { StudentPayload } from './StudentForm';
 import api from '../../api';
@@ -49,18 +49,22 @@ export default function StudentCard({
       }
     }
     loadSummary();
-  }, [registrationId, student.id, ]);
+  }, [registrationId, student.id,]);
 
   const navigate = useNavigate();
   const model = new Student(student);
 
   const originalGroup = student.groupId;
 
-  const imageSrc = student.imageUrl
-    ? student.imageUrl
-    : undefined;
+  const imageSrc = useMemo(() => {
+    const url = student?.imageUrl;
+    if (!url) return null;
 
-  console.log(imageSrc);  
+    const base = import.meta.env.VITE_API_PUBLIC_BASE || "http://localhost:3000";
+    return base ? `${base}${url}` : url;
+  }, [student?.imageUrl]);
+
+  console.log(imageSrc);
 
   const handleEditSubmit = async (data: StudentPayload) => {
     try {
@@ -99,7 +103,7 @@ export default function StudentCard({
     e.preventDefault();
     e.stopPropagation();
     setDiscount(discount || 0);
-    
+
     setAmount(paymentsDue);
     setShowPaymentModal(true);
   };
@@ -146,7 +150,9 @@ export default function StudentCard({
             {imageSrc ? (
               <img
                 src={imageSrc}
-                className="h-20 w-20 rounded-full object-cover"
+                alt={`${student?.firstName[0] ?? ""} ${student?.lastName[0] ?? ""}`}
+                className="h-21 w-21 rounded-full object-cover"
+                loading="lazy"
               />
             ) : (
               <span className="text-gray-500 dark:text-gray-400">{student.firstName[0]}  {student.lastName[0]}</span>
@@ -199,7 +205,8 @@ export default function StudentCard({
       {showPaymentModal && (
         <Modal isOpen={showPaymentModal} onClose={handleCancelPaymentModal} className='max-w-[700px]'>
           <StudentPaymentForm
-            registrationId={registrationId?? ''}
+            studentId={student.id}
+            registrationId={registrationId ?? ''}
             agreedPrice={(group?.price ?? 0) * (100 - discount) / 100}
             existingDiscount={discount}
             totalPaidSoFar={paidAmount}

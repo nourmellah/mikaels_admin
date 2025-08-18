@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import InputField from '../form/input/InputField';
 import Select from '../form/Select';
 import Switch from '../form/switch/Switch';
@@ -59,7 +59,13 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
       .catch(console.error);
   }, []);
 
-  console.log(initialData?.imageUrl);
+  const imageSrc = useMemo(() => {
+    const url = initialData?.imageUrl;
+    if (!url) return null;
+
+    const base = import.meta.env.VITE_API_PUBLIC_BASE || "http://localhost:3000";
+    return base ? `${base}${url}` : url;
+  }, [initialData?.imageUrl]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -160,8 +166,12 @@ export default function StudentForm({ initialData, onSubmit }: StudentFormProps)
                 <div className="md:col-span-2">
                   <Label>Photo de profil</Label>
                   <FileInput onChange={handleFileChange} />
-                  {previewUrl && (
-                    <img src={previewUrl} alt="Aperçu" className="mt-2 h-24 w-24 object-cover rounded" />
+                  {imageSrc ? (
+                    <img src={imageSrc} alt="Aperçu" className="mt-2 h-24 w-24 object-cover rounded" loading="lazy" />
+                  ) : (
+                    previewUrl && (
+                      <img src={previewUrl} alt="Aperçu" className="mt-2 h-24 w-24 object-cover rounded" loading="lazy" />
+                    )
                   )}
                   {uploading && <p>Uploading…</p>}
                 </div>

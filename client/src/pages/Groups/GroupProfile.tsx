@@ -22,6 +22,7 @@ import AddTeacherButton from '../../components/teachers/AddTeacherButton';
 
 // Raw view result interface
 interface RawCostSummary {
+  external_share_pct_total: string;
   group_id: string;
   group_name: string;
   total_hours: string;
@@ -39,6 +40,7 @@ interface RawCostSummary {
 
 // Parsed numeric summary
 interface CostSummary {
+  externalSharePctTotal: number;
   teacherDue: number;
   internalTotal: number;
   externalTotal: number;
@@ -133,16 +135,28 @@ export default function GroupProfile() {
       Number(rawSummary.group_total_cost) +
       Number(rawSummary.general_paid) +
       Number(rawSummary.general_unpaid),
+    externalSharePctTotal: Number(rawSummary.external_share_pct_total),
   };
 
   const paidAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-  const expectedRevenue = group.price * students.length;
+
+  const totalDiscount = registrations.reduce(
+    (sum, r) => sum + Number((r as any).discountAmount || 0),
+    0
+  );
+
+  const expectedRevenue = group.price * students.length - totalDiscount;
+
   const unpaidAmount = Math.max(0, expectedRevenue - paidAmount);
+
   const diff = expectedRevenue - summary.totalCost;
   const diffLabel = diff >= 0 ? 'Excédent' : 'Perte';
   const diffValue = Math.abs(diff);
+  const externalPct = summary?.externalSharePctTotal ?? null;
+  const externalPctLabel = externalPct != null ? ` (${Number(externalPct).toFixed(1)}%)` : '';
 
   const isOver = summary.totalCost > paidAmount;
+
 
 
   return (
@@ -179,6 +193,7 @@ export default function GroupProfile() {
         <ComponentCard title="Analyse des coûts">
           <GroupCostBar
             segments={[
+              { value: totalDiscount, label: 'Remise', color: '#805ad5' },
               { value: paidAmount, label: 'Payé', color: '#3182ce' },
               { value: unpaidAmount, label: 'À payer', color: '#d69e2e' },
               { value: diffValue, label: diffLabel, color: diffLabel === 'Perte' ? '#e53e3e' : '#38a169' }
@@ -213,7 +228,7 @@ export default function GroupProfile() {
 
             {/* External Costs */}
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-              <h5 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Coûts externes</h5>
+              <h5 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Coûts externes {externalPctLabel}</h5>
               <p className="font-medium text-gray-800 dark:text-gray-100">{summary.externalTotal.toFixed(3)} TND</p>
             </div>
           </div>
@@ -238,8 +253,8 @@ export default function GroupProfile() {
               <h4 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
                 Professeur
               </h4>
-              {teacher ? <TeacherCard teacher={teacher} phone={teacher.phone || '–'} onUpdated={t => setTeacher(t)} /> 
-              : <AddTeacherButton groupId={group.id} onUpdated={refreshGroupData} currentTeacherId={null} />}
+              {teacher ? <TeacherCard teacher={teacher} phone={teacher.phone || '–'} onUpdated={t => setTeacher(t)} />
+                : <AddTeacherButton groupId={group.id} onUpdated={refreshGroupData} currentTeacherId={null} />}
             </div>
             {/* Students list */}
             <div>
